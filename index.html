@@ -1,22 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>CSV Attendance Processor</title>
+  <title>CSV/TSV Attendance Processor</title>
 </head>
 <body>
-  <h2>Select local CSV file:</h2>
-  <input type="file" accept=".csv" id="fileInput" />
+  <h2>Select local CSV/TSV file:</h2>
+  <input type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" id="fileInput" />
   <button onclick="downloadCsv()" id="downloadBtn" style="display:none;">Download Processed CSV</button>
   <pre id="status"></pre>
+
   <script>
-    // For modern browsers, setting a default filename can only be suggested, not enforced
-    // However, the file input dialog will open in your last used folder, and the user will see the default name as a hint.
     let processedCsv = '';
     let defaultFilename = 'AACActivityAttendance.csv';
 
     document.getElementById('fileInput').addEventListener('click', function() {
-      // Try to suggest the default filename (browsers will only honor this if run from local file system/directory)
-      this.setAttribute('nwsaveas', defaultFilename); // Only has effect in some environments (like NW.js, Electron)
+      this.setAttribute('nwsaveas', defaultFilename);
     });
 
     document.getElementById('fileInput').addEventListener('change', handleFile);
@@ -24,52 +22,176 @@
     function handleFile(event) {
       const file = event.target.files[0];
       if (!file) return;
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = '';
+
       if (file.name !== defaultFilename) {
-        document.getElementById('status').textContent =
-          'Warning: File is not named "' + defaultFilename + '".';
-      } else {
-        document.getElementById('status').textContent = '';
+        statusEl.textContent = 'Warning: File is not named "' + defaultFilename + '".\n';
       }
+
       const reader = new FileReader();
       reader.onload = function(e) {
-        processedCsv = processCsv(e.target.result);
-        document.getElementById('downloadBtn').style.display = 'inline';
-        document.getElementById('status').textContent += ' Processing done. Click Download Processed CSV.';
+        try {
+          processedCsv = processText(e.target.result);
+          document.getElementById('downloadBtn').style.display = 'inline';
+          statusEl.textContent += 'Processing done. Click "Download Processed CSV".';
+        } catch (err) {
+          statusEl.textContent += 'Error processing file: ' + err.message;
+          console.error(err);
+        }
       };
       reader.readAsText(file);
     }
-    function processCsv(csvText) {
-      const lines = csvText.split(/\r?\n/);
-      const headers = lines[0].split(',');
-      const idx = name => headers.indexOf(name);
-      const output = [
-        "ActivityDateDisplay,ActivityDisplay,FullName,Age,PostalCode1,Gender,RegistrationDocumentType"
-      ];
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(',');
-        if (row.length < headers.length) continue;
-        if (row[idx("Attendance")].trim() === '1') {
-          let adisp = row[idx("ActivityDisplay")].split(/\r|\n/)[0];
-          output.push([
-            row[idx("ActivityDateDisplay")],
-            adisp,
-            row[idx("FullName")],
-            row[idx("Age")],
-            row[idx("PostalCode1")],
-            row[idx("Gender")],
-            row[idx("RegistrationDocumentType")]
-          ].join(','));
+
+    // Robust parser for whole CSV/TSV text.
+    // Supports quoted fields with escaped quotes ("") and embedded newlines.
+    function parseDelimitedText(text, delimiter) {
+      const rows = [];
+      const row = [];
+      let field = '';
+      let inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === '"') {
+          // if currently in quotes and next char is also quote -> escaped quote
+          if (inQuotes && i + 1 < text.length && text[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === delimiter && !inQuotes) {
+          row.push(field);
+          field = '';
+        } else if (ch === '\r') {
+          // ignore CR
+        } else if (ch === '\n' && !inQuotes) {
+          row.push(field);
+          rows.push(row.slice());
+          field = '';
+          row.length = 0;
+        } else {
+          field += ch;
         }
       }
-      return output.join("\n");
+      // push last field/row if any
+      if (field !== '' || row.length > 0) {
+        row.push(field);
+        rows.push(row.slice());
+      }
+      return rows;
     }
+
+    function detectDelimiter(headerLine) {
+      // common delimiters: comma and tab. Choose tab if tab chars present, else comma.
+      if (headerLine.indexOf('\t') !== -1) return '\t';
+      return ',';
+    }
+
+    function csvEscape(s) {
+      if (s === undefined || s === null) return '';
+      s = String(s);
+      if (s.includes('"')) s = s.replace(/"/g, '""');
+      if (s.includes(',') || s.includes('\n') || s.includes('"')) return `"${s}"`;
+      return s;
+    }
+
+    function processText(text) {
+      if (!text) return '';
+
+      // trim leading BOM, we'll leave it to header handling too
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+      // Determine delimiter by examining the first non-empty line
+      const firstNL = text.indexOf('\n');
+      const firstLine = firstNL === -1 ? text : text.slice(0, firstNL);
+      const delimiter = detectDelimiter(firstLine);
+
+      const rows = parseDelimitedText(text, delimiter);
+
+      // find first non-empty header row
+      let headerRowIndex = 0;
+      while (headerRowIndex < rows.length && rows[headerRowIndex].join('').trim() === '') headerRowIndex++;
+      if (headerRowIndex >= rows.length) throw new Error('No header row found.');
+
+      let headers = rows[headerRowIndex].map(h => (h || '').trim());
+      // strip BOM if present in first header
+      if (headers.length > 0 && headers[0].charCodeAt(0) === 0xFEFF) {
+        headers[0] = headers[0].slice(1);
+      }
+
+      const idxOf = name => {
+        let i = headers.indexOf(name);
+        if (i !== -1) return i;
+        const lower = name.toLowerCase();
+        return headers.findIndex(h => (h || '').toLowerCase() === lower);
+      };
+
+      const required = [
+        "Attendance",
+        "ActivityDateDisplay",
+        "ActivityDisplay",
+        "FullName",
+        "Age",
+        "PostalCode1",
+        "Gender",
+        "RegistrationDocumentType"
+      ];
+
+      const indices = {};
+      const missing = [];
+      required.forEach(r => {
+        const i = idxOf(r);
+        if (i === -1) missing.push(r);
+        indices[r] = i;
+      });
+
+      if (missing.length) {
+        throw new Error('Missing required header(s): ' + missing.join(', '));
+      }
+
+      const outputLines = [
+        "ActivityDateDisplay,ActivityDisplay,FullName,Age,PostalCode1,Gender,RegistrationDocumentType"
+      ];
+
+      for (let r = headerRowIndex + 1; r < rows.length; r++) {
+        const row = rows[r];
+        // skip empty rows
+        if (!row || row.join('').trim() === '') continue;
+
+        // pad row to headers length
+        while (row.length < headers.length) row.push('');
+
+        const attendanceVal = (row[indices["Attendance"]] || '').toString().trim();
+        if (attendanceVal === '1') {
+          // ActivityDisplay may contain newlines; we want only first visible line as before
+          const rawADisp = row[indices["ActivityDisplay"]] || '';
+          const adisp = (rawADisp.split(/\r|\n/)[0] || '').trim();
+          const outRow = [
+            row[indices["ActivityDateDisplay"]],
+            adisp,
+            row[indices["FullName"]],
+            row[indices["Age"]],
+            row[indices["PostalCode1"]],
+            row[indices["Gender"]],
+            row[indices["RegistrationDocumentType"]]
+          ].map(csvEscape).join(',');
+          outputLines.push(outRow);
+        }
+      }
+
+      return outputLines.join("\n");
+    }
+
     function downloadCsv() {
-      const blob = new Blob([processedCsv], {type: "text/csv"});
+      const blob = new Blob([processedCsv], {type: "text/csv;charset=utf-8"});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = "AACFilteredAttendance.csv";
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       URL.revokeObjectURL(url);
     }
   </script>
