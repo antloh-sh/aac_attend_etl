@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CSV Attendance Processor</title>
+</head>
+<body>
+  <h2>Select local CSV file:</h2>
+  <input type="file" accept=".csv" id="fileInput" />
+  <button onclick="downloadCsv()" id="downloadBtn" style="display:none;">Download Processed CSV</button>
+  <pre id="status"></pre>
+  <script>
+    // For modern browsers, setting a default filename can only be suggested, not enforced
+    // However, the file input dialog will open in your last used folder, and the user will see the default name as a hint.
+    let processedCsv = '';
+    let defaultFilename = 'AACActivityAttendance.csv';
+
+    document.getElementById('fileInput').addEventListener('click', function() {
+      // Try to suggest the default filename (browsers will only honor this if run from local file system/directory)
+      this.setAttribute('nwsaveas', defaultFilename); // Only has effect in some environments (like NW.js, Electron)
+    });
+
+    document.getElementById('fileInput').addEventListener('change', handleFile);
+
+    function handleFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (file.name !== defaultFilename) {
+        document.getElementById('status').textContent =
+          'Warning: File is not named "' + defaultFilename + '".';
+      } else {
+        document.getElementById('status').textContent = '';
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        processedCsv = processCsv(e.target.result);
+        document.getElementById('downloadBtn').style.display = 'inline';
+        document.getElementById('status').textContent += ' Processing done. Click Download Processed CSV.';
+      };
+      reader.readAsText(file);
+    }
+    function processCsv(csvText) {
+      const lines = csvText.split(/\r?\n/);
+      const headers = lines[0].split(',');
+      const idx = name => headers.indexOf(name);
+      const output = [
+        "ActivityDateDisplay,ActivityDisplay,FullName,Age,PostalCode1,Gender,RegistrationDocumentType"
+      ];
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(',');
+        if (row.length < headers.length) continue;
+        if (row[idx("Attendance")].trim() === '1') {
+          let adisp = row[idx("ActivityDisplay")].split(/\r|\n/)[0];
+          output.push([
+            row[idx("ActivityDateDisplay")],
+            adisp,
+            row[idx("FullName")],
+            row[idx("Age")],
+            row[idx("PostalCode1")],
+            row[idx("Gender")],
+            row[idx("RegistrationDocumentType")]
+          ].join(','));
+        }
+      }
+      return output.join("\n");
+    }
+    function downloadCsv() {
+      const blob = new Blob([processedCsv], {type: "text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "AACFilteredAttendance.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
