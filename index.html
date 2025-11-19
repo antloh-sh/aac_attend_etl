@@ -96,6 +96,70 @@
       return s;
     }
 
+    // Format a Date object as YYYY-MMM-DD where MMM is 3-letter month (e.g., 2025-Nov-19)
+    function formatDateToYYYYMMMDDFromDate(d) {
+      if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const yyyy = d.getFullYear();
+      const mmm = months[d.getMonth()];
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mmm}-${dd}`;
+    }
+
+    // Try to interpret various date representations and return YYYY-MMM-DD or original trimmed string if unparseable.
+    function formatActivityDate(raw) {
+      if (raw === undefined || raw === null) return '';
+      const s = String(raw).trim();
+      if (s === '') return '';
+
+      // Numeric Excel serial conversion (common when exporting from spreadsheets)
+      if (/^\d+$/.test(s)) {
+        const serial = parseInt(s, 10);
+        // sanity check for reasonable Excel serials (e.g., >30 and <60000)
+        if (serial > 30 && serial < 60000) {
+          // Excel epoch: 1899-12-31 with the 1900 leap year bug (dates >= 60 are offset by 1)
+          const epoch = Date.UTC(1899, 11, 31);
+          const offset = serial > 59 ? -1 : 0;
+          const ms = epoch + (serial + offset) * 24 * 60 * 60 * 1000;
+          const d = new Date(ms);
+          const formatted = formatDateToYYYYMMMDDFromDate(d);
+          if (formatted) return formatted;
+        }
+      }
+
+      // Try native Date parsing (ISO and many common formats)
+      const parsed = Date.parse(s);
+      if (!isNaN(parsed)) {
+        return formatDateToYYYYMMMDDFromDate(new Date(parsed));
+      }
+
+      // Try common dd/mm/yyyy or dd-mm-yyyy or mm/dd/yyyy patterns and disambiguate heuristically.
+      const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+      if (m) {
+        let p1 = parseInt(m[1], 10), p2 = parseInt(m[2], 10), p3 = parseInt(m[3], 10);
+        let day, month, year;
+        if (p3 > 31) { // likely year at end
+          year = p3;
+          // If one of p1/p2 > 12 we can determine which is day
+          if (p1 > 12) { day = p1; month = p2; }
+          else if (p2 > 12) { day = p2; month = p1; }
+          else {
+            // default to dd/mm/yyyy
+            day = p1; month = p2;
+          }
+        } else {
+          // two-digit year -> assume 2000+
+          year = 2000 + p3;
+          day = p1; month = p2;
+        }
+        const d = new Date(year, month - 1, day);
+        if (!isNaN(d.getTime())) return formatDateToYYYYMMMDDFromDate(d);
+      }
+
+      // fallback: return original trimmed value (so user can inspect unmodified if parsing failed)
+      return s;
+    }
+
     function processText(text) {
       if (!text) return '';
 
@@ -167,8 +231,13 @@
           // ActivityDisplay may contain newlines; we want only first visible line as before
           const rawADisp = row[indices["ActivityDisplay"]] || '';
           const adisp = (rawADisp.split(/\r|\n/)[0] || '').trim();
+
+          // Format ActivityDateDisplay as YYYY-MMM-DD
+          const rawDate = row[indices["ActivityDateDisplay"]] || '';
+          const formattedDate = formatActivityDate(rawDate);
+
           const outRow = [
-            row[indices["ActivityDateDisplay"]],
+            formattedDate,
             adisp,
             row[indices["FullName"]],
             row[indices["Age"]],
