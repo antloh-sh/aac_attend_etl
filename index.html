@@ -135,7 +135,7 @@
         "Age",
         "PostalCode1",
         "Gender",
-        "RegistrationDocumentType"
+        "RegistrationDocumentNumber"
       ];
 
       const indices = {};
@@ -151,7 +151,7 @@
       }
 
       const outputLines = [
-        "ActivityDateDisplay,ActivityDisplay,FullName,Age,PostalCode1,Gender,RegistrationDocumentType"
+        "ActivityDateDisplay,ActivityDisplay,FullName,Age,PostalCode1,Gender,RegistrationDocumentNumber"
       ];
 
       for (let r = headerRowIndex + 1; r < rows.length; r++) {
@@ -174,7 +174,7 @@
             row[indices["Age"]],
             row[indices["PostalCode1"]],
             row[indices["Gender"]],
-            row[indices["RegistrationDocumentType"]]
+            row[indices["RegistrationDocumentNumber"]]
           ].map(csvEscape).join(',');
           outputLines.push(outRow);
         }
