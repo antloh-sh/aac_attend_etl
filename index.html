@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
+<!DOCTYPE html><html lang="en"><head> <meta charset="UTF-8" />
   <title>AAC Attendance CSV Processor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <!-- XLSX parser for AAC_ActivityMaster.xlsx -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
   <style>
     :root {
       --bg: #0f172a;
@@ -25,11 +20,9 @@
       --radius-pill: 999px;
       --focus-ring: 0 0 0 2px rgba(34, 197, 94, 0.6);
     }
-
     * {
       box-sizing: border-box;
     }
-
     body {
       margin: 0;
       min-height: 100vh;
@@ -42,7 +35,6 @@
       justify-content: center;
       padding: 24px;
     }
-
     .app-shell {
       width: 100%;
       max-width: 840px;
@@ -54,7 +46,6 @@
       position: relative;
       overflow: hidden;
     }
-
     .app-shell::before {
       content: "";
       position: absolute;
@@ -66,12 +57,10 @@
       mix-blend-mode: screen;
       pointer-events: none;
     }
-
     .app-inner {
       position: relative;
       z-index: 1;
     }
-
     .app-header {
       display: flex;
       align-items: flex-start;
@@ -80,20 +69,17 @@
       margin-bottom: 18px;
       flex-wrap: wrap;
     }
-
     .title-block {
       display: flex;
       flex-direction: column;
       gap: 4px;
     }
-
     .title-row {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       padding: 3px 1px;
     }
-
     .app-badge {
       display: inline-flex;
       align-items: center;
@@ -107,7 +93,6 @@
       text-transform: uppercase;
       color: var(--muted);
     }
-
     .app-dot {
       width: 6px;
       height: 6px;
@@ -115,7 +100,6 @@
       background: var(--accent);
       box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
     }
-
     h1 {
       margin: 0;
       font-size: 20px;
@@ -125,7 +109,6 @@
       align-items: center;
       gap: 8px;
     }
-
     .app-chip {
       font-size: 11px;
       padding: 2px 8px;
@@ -134,13 +117,11 @@
       color: var(--accent);
       border: 1px solid rgba(34, 197, 94, 0.4);
     }
-
     .subtitle {
       font-size: 13px;
       color: var(--muted);
       max-width: 520px;
     }
-
     .meta-pill {
       align-self: center;
       display: inline-flex;
@@ -153,7 +134,6 @@
       font-size: 11px;
       color: #e5e7eb;
     }
-
     .meta-pill span {
       display: inline-flex;
       align-items: center;
@@ -162,19 +142,16 @@
       border-radius: 999px;
       background: rgba(15, 23, 42, 0.9);
     }
-
     .meta-dot {
       width: 6px;
       height: 6px;
       border-radius: 999px;
       background: rgba(148, 163, 184, 0.8);
     }
-
     .meta-dot.accent {
       background: var(--accent);
       box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
     }
-
     .main-card {
       margin-top: 12px;
       padding: 16px 14px 14px;
@@ -184,13 +161,11 @@
         radial-gradient(circle at 100% 0, rgba(56, 189, 248, 0.16), transparent 55%),
         linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(15, 23, 42, 0.96));
     }
-
     .main-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.1fr);
       gap: 14px;
     }
-
     @media (max-width: 840px) {
       .main-grid {
         grid-template-columns: minmax(0, 1fr);
@@ -210,7 +185,6 @@
         align-self: flex-start;
       }
     }
-
     .upload-panel {
       padding: 14px 12px 12px;
       border-radius: 14px;
@@ -220,7 +194,6 @@
       flex-direction: column;
       gap: 12px;
     }
-
     .upload-label {
       font-size: 13px;
       font-weight: 500;
@@ -229,7 +202,6 @@
       align-items: center;
       gap: 8px;
     }
-
     .pill-hint {
       font-size: 11px;
       padding: 2px 8px;
@@ -238,7 +210,6 @@
       border: 1px solid rgba(55, 65, 81, 0.9);
       color: var(--muted);
     }
-
     .dropzone {
       position: relative;
       border-radius: 13px;
@@ -255,7 +226,6 @@
       cursor: pointer;
       transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
     }
-
     .dropzone:hover {
       border-color: rgba(148, 163, 184, 0.9);
       background: linear-gradient(
@@ -265,19 +235,16 @@
       );
       transform: translateY(-1px);
     }
-
     .dropzone:focus-within {
       outline: none;
       box-shadow: var(--focus-ring);
     }
-
     .dropzone-icon-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
     }
-
     .file-icon {
       width: 32px;
       height: 32px;
@@ -290,31 +257,26 @@
       font-size: 18px;
       box-shadow: 0 12px 22px rgba(16, 185, 129, 0.55);
     }
-
     .dropzone-text {
       display: flex;
       flex-direction: column;
       gap: 2px;
       font-size: 12px;
     }
-
     .drop-main {
       font-size: 13px;
       color: #e5e7eb;
     }
-
     .drop-sub {
       font-size: 11px;
       color: var(--muted);
     }
-
     .file-badge-row {
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
       margin-top: 4px;
     }
-
     .file-type-badge {
       font-size: 11px;
       padding: 2px 8px;
@@ -323,14 +285,12 @@
       border: 1px solid rgba(55, 65, 81, 0.9);
       color: #e5e7eb;
     }
-
     input[type="file"] {
       position: absolute;
       inset: 0;
       opacity: 0;
       cursor: pointer;
     }
-
     .processing-row {
       display: flex;
       align-items: center;
@@ -339,7 +299,6 @@
       margin-top: 6px;
       flex-wrap: wrap;
     }
-
     .status-chip {
       font-size: 11px;
       padding: 4px 8px;
@@ -351,26 +310,22 @@
       align-items: center;
       gap: 6px;
     }
-
     .status-dot {
       width: 6px;
       height: 6px;
       border-radius: 999px;
       background: rgba(148, 163, 184, 0.95);
     }
-
     .status-dot.active {
       background: var(--accent);
       box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
     }
-
     .status-text {
       font-size: 11px;
       color: var(--muted);
       min-height: 16px;
       white-space: pre-line;
     }
-
     .download-panel {
       padding: 14px 12px 11px;
       border-radius: 14px;
@@ -380,7 +335,6 @@
       flex-direction: column;
       gap: 10px;
     }
-
     .download-title {
       display: flex;
       align-items: center;
@@ -389,7 +343,6 @@
       font-size: 13px;
       font-weight: 500;
     }
-
     .pill-success-soft {
       font-size: 11px;
       padding: 2px 8px;
@@ -398,12 +351,10 @@
       border: 1px solid rgba(34, 197, 94, 0.55);
       color: var(--accent);
     }
-
     .download-meta {
       font-size: 11px;
       color: var(--muted);
     }
-
     .download-actions {
       display: flex;
       align-items: center;
@@ -412,7 +363,6 @@
       margin-top: 4px;
       flex-wrap: wrap;
     }
-
     .primary-btn {
       border: none;
       border-radius: var(--radius-pill);
@@ -429,23 +379,19 @@
       transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
       white-space: nowrap;
     }
-
     .primary-btn span.icon {
       font-size: 14px;
     }
-
     .primary-btn:hover {
       transform: translateY(-1px);
       box-shadow: 0 16px 24px rgba(34, 197, 94, 0.5);
       filter: brightness(1.04);
     }
-
     .primary-btn:active {
       transform: translateY(0);
       box-shadow: 0 8px 16px rgba(34, 197, 94, 0.45);
       filter: brightness(0.98);
     }
-
     .primary-btn:disabled {
       opacity: 0.35;
       cursor: not-allowed;
@@ -453,16 +399,13 @@
       box-shadow: none;
       filter: none;
     }
-
     .pill-note {
       font-size: 11px;
       color: var(--muted);
     }
-
     .pill-note strong {
       color: #e5e7eb;
     }
-
     .rules-panel {
       padding: 13px 11px 11px;
       border-radius: 14px;
@@ -474,7 +417,6 @@
       font-size: 11px;
       color: var(--muted);
     }
-
     .rules-title {
       font-size: 12px;
       font-weight: 500;
@@ -483,14 +425,12 @@
       align-items: center;
       gap: 6px;
     }
-
     .rules-title-dot {
       width: 7px;
       height: 7px;
       border-radius: 999px;
       background: rgba(148, 163, 184, 0.9);
     }
-
     .rules-list {
       list-style: none;
       padding-left: 0;
@@ -499,13 +439,11 @@
       flex-direction: column;
       gap: 2px;
     }
-
     .rules-list li {
       display: flex;
       align-items: flex-start;
       gap: 6px;
     }
-
     .rules-bullet {
       width: 4px;
       height: 4px;
@@ -513,7 +451,6 @@
       background: rgba(148, 163, 184, 0.9);
       margin-top: 5px;
     }
-
     .footer-note {
       margin-top: 10px;
       font-size: 10px;
@@ -523,15 +460,12 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-
     .footer-note strong {
       color: #e5e7eb;
     }
-
     .error-text {
       color: var(--danger);
     }
-
     .master-status-pill {
       font-size: 11px;
       padding: 2px 8px;
@@ -543,702 +477,644 @@
       align-items: center;
       gap: 6px;
     }
-
     .master-dot {
       width: 6px;
       height: 6px;
       border-radius: 999px;
       background: rgba(148, 163, 184, 0.9);
     }
-
     .master-dot.ready {
       background: var(--accent);
       box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
     }
-  </style>
-</head>
-<body>
-  <div class="app-shell">
-    <div class="app-inner">
-      <header class="app-header">
-        <div class="title-block">
-          <div class="title-row">
-            <div class="app-badge">
-              <span class="app-dot"></span>
-              AAC Tools · Attendance
+  </style></head><body> <div class="app-shell">
+  <div class="app-inner">
+    <header class="app-header">
+      <div class="title-block">
+        <div class="title-row">
+          <div class="app-badge">
+            <span class="app-dot"></span>
+            AAC Tools · Attendance
+          </div>
+        </div>
+        <h1>
+          CSV Attendance Processor
+          <span class="app-chip">Client-side only</span>
+        </h1>
+        <p class="subtitle">
+          Upload <strong>AACActivityAttendance.csv</strong> from IngoTPCC (AAC Activity Attendance report)
+          and <strong>AAC_ActivityMaster.xlsx</strong> to generate a clean CSV with attendance = 1, key fields, and GUI flag.
+        </p>
+      </div>
+      <div class="meta-pill">
+        <span>
+          <span class="meta-dot accent"></span>
+          Filters Attendance = 1
+        </span>
+        <span>
+          <span class="meta-dot"></span>
+          Adds gui = TRUE/FALSE
+        </span>
+      </div>
+    </header>
+    <section class="main-card">
+      <div class="main-grid">
+        <!-- Left: CSV + Master uploads -->
+        <div class="upload-panel">
+          <div class="upload-label">
+            1. Attendance CSV
+            <span class="pill-hint">From IngoTPCC → Report → AAC Activity Attendance</span>
+          </div>
+          <label class="dropzone" id="csvDropzone">
+            <input
+              type="file"
+              accept=".csv,.tsv,text/csv,text/tab-separated-values"
+              id="fileInput"
+            />
+            <div class="dropzone-icon-row">
+              <div class="file-icon" aria-hidden="true">
+                ⬆
+              </div>
+              <div class="dropzone-text">
+                <span class="drop-main">
+                  Click to choose CSV/TSV, or drag &amp; drop here
+                </span>
+                <span class="drop-sub">
+                  Expected filename: <strong>AACActivityAttendance.csv</strong>
+                </span>
+              </div>
+            </div>
+            <div class="file-badge-row">
+              <span class="file-type-badge">Attendance CSV / TSV</span>
+              <span class="file-type-badge">Local processing only</span>
+            </div>
+          </label>
+          <div class="upload-label">
+            2. Activity master (GUI)
+            <span class="pill-hint">Upload AAC_ActivityMaster.xlsx</span>
+          </div>
+          <label class="dropzone" id="masterDropzone">
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              id="masterInput"
+            />
+            <div class="dropzone-icon-row">
+              <div class="file-icon" aria-hidden="true">
+                📗
+              </div>
+              <div class="dropzone-text">
+                <span class="drop-main">
+                  Click to choose AAC_ActivityMaster.xlsx, or drag &amp; drop here
+                </span>
+                <span class="drop-sub">
+                  Used to determine gui = TRUE/FALSE from GUI column.
+                </span>
+              </div>
+            </div>
+            <div class="file-badge-row">
+              <span class="file-type-badge">Excel (.xlsx)</span>
+              <span class="file-type-badge">Matched by activitydisplay</span>
+            </div>
+          </label>
+          <div class="processing-row">
+            <div class="status-chip">
+              <span class="status-dot" id="statusDot"></span>
+              <span id="statusLabel">Waiting for files</span>
+            </div>
+            <div class="pill-note">
+              Processed rows: <strong id="rowCount">0</strong>
             </div>
           </div>
-          <h1>
-            CSV Attendance Processor
-            <span class="app-chip">Client-side only</span>
-          </h1>
-          <p class="subtitle">
-            Upload <strong>AACActivityAttendance.csv</strong> from IngoTPCC (AAC Activity Attendance report)
-            and <strong>AAC_ActivityMaster.xlsx</strong> to generate a clean CSV with attendance = 1, key fields, and GUI flag.
+          <div class="processing-row">
+            <div class="master-status-pill">
+              <span class="master-dot" id="masterDot"></span>
+              <span id="masterLabel">Master: not loaded</span>
+            </div>
+            <div class="pill-note">
+              GUI flag uses master GUI column; “Yes…” → TRUE, others → FALSE.
+            </div>
+          </div>
+          <div class="status-text" id="status"></div>
+        </div>
+        <!-- Right: rules + download -->
+        <div class="download-panel">
+          <div class="download-title">
+            <span>Output file</span>
+            <span class="pill-success-soft">
+              AACFilteredAttendance.csv
+            </span>
+          </div>
+          <p class="download-meta">
+            Contains only rows where Attendance = 1, with ActivityDateDisplay formatted, ActivityDisplay truncated to first line,
+            selected demographic fields, and an extra <code>gui</code> column (TRUE/FALSE) based on AAC_ActivityMaster.xlsx.
           </p>
-        </div>
-        <div class="meta-pill">
-          <span>
-            <span class="meta-dot accent"></span>
-            Filters Attendance = 1
-          </span>
-          <span>
-            <span class="meta-dot"></span>
-            Adds gui = TRUE/FALSE
-          </span>
-        </div>
-      </header>
-
-      <section class="main-card">
-        <div class="main-grid">
-          <!-- Left: CSV + Master uploads -->
-          <div class="upload-panel">
-            <div class="upload-label">
-              1. Attendance CSV
-              <span class="pill-hint">From IngoTPCC → Report → AAC Activity Attendance</span>
-            </div>
-
-            <label class="dropzone" id="csvDropzone">
-              <input
-                type="file"
-                accept=".csv,.tsv,text/csv,text/tab-separated-values"
-                id="fileInput"
-              />
-              <div class="dropzone-icon-row">
-                <div class="file-icon" aria-hidden="true">
-                  ⬆
-                </div>
-                <div class="dropzone-text">
-                  <span class="drop-main">
-                    Click to choose CSV/TSV, or drag &amp; drop here
-                  </span>
-                  <span class="drop-sub">
-                    Expected filename: <strong>AACActivityAttendance.csv</strong>
-                  </span>
-                </div>
-              </div>
-              <div class="file-badge-row">
-                <span class="file-type-badge">Attendance CSV / TSV</span>
-                <span class="file-type-badge">Local processing only</span>
-              </div>
-            </label>
-
-            <div class="upload-label">
-              2. Activity master (GUI)
-              <span class="pill-hint">Upload AAC_ActivityMaster.xlsx</span>
-            </div>
-
-            <label class="dropzone" id="masterDropzone">
-              <input
-                type="file"
-                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                id="masterInput"
-              />
-              <div class="dropzone-icon-row">
-                <div class="file-icon" aria-hidden="true">
-                  📗
-                </div>
-                <div class="dropzone-text">
-                  <span class="drop-main">
-                    Click to choose AAC_ActivityMaster.xlsx, or drag &amp; drop here
-                  </span>
-                  <span class="drop-sub">
-                    Used to determine gui = TRUE/FALSE from GUI column.
-                  </span>
-                </div>
-              </div>
-              <div class="file-badge-row">
-                <span class="file-type-badge">Excel (.xlsx)</span>
-                <span class="file-type-badge">Matched by activitydisplay</span>
-              </div>
-            </label>
-
-            <div class="processing-row">
-              <div class="status-chip">
-                <span class="status-dot" id="statusDot"></span>
-                <span id="statusLabel">Waiting for files</span>
-              </div>
-              <div class="pill-note">
-                Processed rows: <strong id="rowCount">0</strong>
-              </div>
-            </div>
-            <div class="processing-row">
-              <div class="master-status-pill">
-                <span class="master-dot" id="masterDot"></span>
-                <span id="masterLabel">Master: not loaded</span>
-              </div>
-              <div class="pill-note">
-                GUI flag uses master GUI column; “Yes…” → TRUE, others → FALSE.
-              </div>
-            </div>
-            <div class="status-text" id="status"></div>
-          </div>
-
-          <!-- Right: rules + download -->
-          <div class="download-panel">
-            <div class="download-title">
-              <span>Output file</span>
-              <span class="pill-success-soft">
-                AACFilteredAttendance.csv
-              </span>
-            </div>
-            <p class="download-meta">
-              Contains only rows where Attendance = 1, with ActivityDateDisplay formatted, ActivityDisplay truncated to first line,
-              selected demographic fields, and an extra <code>gui</code> column (TRUE/FALSE) based on AAC_ActivityMaster.xlsx.
-            </p>
-
-            <div class="download-actions">
-              <button
-                class="primary-btn"
-                id="downloadBtn"
-                onclick="downloadCsv()"
-                disabled
-              >
-                <span class="icon">⬇</span>
-                <span>Download processed CSV</span>
-              </button>
-              <div class="pill-note">
-                File is generated in your browser and never uploaded.
-              </div>
-            </div>
-
-            <div class="rules-panel">
-              <div class="rules-title">
-                <span class="rules-title-dot"></span>
-                Transformation rules
-              </div>
-              <ul class="rules-list">
-                <li>
-                  <span class="rules-bullet"></span>
-                  <span>Keep only records where <code>Attendance = 1</code>.</span>
-                </li>
-                <li>
-                  <span class="rules-bullet"></span>
-                  <span>Output fields (lowercase header): activitydatedisplay, activitydisplay, fullname, age, postalcode1, gender, registrationdocumentnumber, gui.</span>
-                </li>
-                <li>
-                  <span class="rules-bullet"></span>
-                  <span>ActivityDisplay keeps only the first line (before line breaks).</span>
-                </li>
-                <li>
-                  <span class="rules-bullet"></span>
-                  <span>ActivityDateDisplay is formatted to dd-mm-yy where possible; otherwise, original text is kept.</span>
-                </li>
-                <li>
-                  <span class="rules-bullet"></span>
-                  <span>GUI flag is derived from AAC_ActivityMaster.xlsx: if GUI starts with "Yes", gui = TRUE; otherwise FALSE.</span>
-                </li>
-              </ul>
+          <div class="download-actions">
+            <button
+              class="primary-btn"
+              id="downloadBtn"
+              onclick="downloadCsv()"
+              disabled
+            >
+              <span class="icon">⬇</span>
+              <span>Download processed CSV</span>
+            </button>
+            <div class="pill-note">
+              File is generated in your browser and never uploaded.
             </div>
           </div>
+          <div class="rules-panel">
+            <div class="rules-title">
+              <span class="rules-title-dot"></span>
+              Transformation rules
+            </div>
+            <ul class="rules-list">
+              <li>
+                <span class="rules-bullet"></span>
+                <span>Keep only records where <code>Attendance = 1</code>.</span>
+              </li>
+              <li>
+                <span class="rules-bullet"></span>
+                <span>Output fields (lowercase header): activitydatedisplay, activitydisplay, fullname, age, postalcode1, gender, registrationdocumentnumber, gui.</span>
+              </li>
+              <li>
+                <span class="rules-bullet"></span>
+                <span>ActivityDisplay keeps only the first line (before line breaks).</span>
+              </li>
+              <li>
+                <span class="rules-bullet"></span>
+                <span>ActivityDateDisplay is formatted to dd-mm-yy where possible; otherwise, original text is kept.</span>
+              </li>
+              <li>
+                <span class="rules-bullet"></span>
+                <span>GUI flag is derived from AAC_ActivityMaster.xlsx: if GUI starts with "Yes", gui = TRUE; otherwise FALSE.</span>
+              </li>
+            </ul>
+          </div>
         </div>
-
-        <div class="footer-note">
-          <span>
-            <strong>Tip:</strong> Load <code>AAC_ActivityMaster.xlsx</code> first, then the attendance CSV, for clearer status feedback.
-          </span>
-          <span>
-            Built for AAC attendance workflows · Works fully offline
-          </span>
-        </div>
-      </section>
-    </div>
+      </div>
+      <div class="footer-note">
+        <span>
+          <strong>Tip:</strong> Load <code>AAC_ActivityMaster.xlsx</code> first, then the attendance CSV, for clearer status feedback.
+        </span>
+        <span>
+          Built for AAC attendance workflows · Works fully offline
+        </span>
+      </div>
+    </section>
   </div>
+</div>
+<script>
+  let processedCsv = "";
+  let processedRowCount = 0;
+  const defaultFilename = "AACActivityAttendance.csv";
+  const fileInput = document.getElementById("fileInput");
+  const masterInput = document.getElementById("masterInput");
+  const statusEl = document.getElementById("status");
+  const downloadBtn = document.getElementById("downloadBtn");
+  const statusDot = document.getElementById("statusDot");
+  const statusLabel = document.getElementById("statusLabel");
+  const rowCountEl = document.getElementById("rowCount");
+  const csvDropzone = document.getElementById("csvDropzone");
+  const masterDropzone = document.getElementById("masterDropzone");
+  const masterDot = document.getElementById("masterDot");
+  const masterLabel = document.getElementById("masterLabel");
 
-  <script>
-    let processedCsv = "";
-    let processedRowCount = 0;
-    const defaultFilename = "AACActivityAttendance.csv";
+  // activitydisplay (lowercased + trimmed first-line) -> { guiRaw }
+  let masterLookup = {};
+  let masterLoaded = false;
 
-    const fileInput = document.getElementById("fileInput");
-    const masterInput = document.getElementById("masterInput");
-    const statusEl = document.getElementById("status");
-    const downloadBtn = document.getElementById("downloadBtn");
-    const statusDot = document.getElementById("statusDot");
-    const statusLabel = document.getElementById("statusLabel");
-    const rowCountEl = document.getElementById("rowCount");
-    const csvDropzone = document.getElementById("csvDropzone");
-    const masterDropzone = document.getElementById("masterDropzone");
-    const masterDot = document.getElementById("masterDot");
-    const masterLabel = document.getElementById("masterLabel");
+  function resetOutput() {
+    processedCsv = "";
+    processedRowCount = 0;
+    rowCountEl.textContent = "0";
+    downloadBtn.disabled = true;
+  }
 
-    // activitydisplay (lowercased + trimmed first-line) -> { guiRaw }
-    let masterLookup = {};
-    let masterLoaded = false;
-
-    function resetOutput() {
-      processedCsv = "";
-      processedRowCount = 0;
-      rowCountEl.textContent = "0";
-      downloadBtn.disabled = true;
+  function setStatus({ text, isError = false, isProcessing = false }) {
+    statusEl.textContent = text || "";
+    statusEl.classList.toggle("error-text", isError);
+    if (isProcessing) {
+      statusDot.classList.add("active");
+      statusLabel.textContent = "Processing...";
+    } else if (isError) {
+      statusDot.classList.remove("active");
+      statusLabel.textContent = "Error";
+    } else if (processedCsv) {
+      statusDot.classList.add("active");
+      statusLabel.textContent = "Ready to download";
+    } else {
+      statusDot.classList.remove("active");
+      statusLabel.textContent = "Waiting for files";
     }
+  }
 
-    function setStatus({ text, isError = false, isProcessing = false }) {
-      statusEl.textContent = text || "";
-      statusEl.classList.toggle("error-text", isError);
-      if (isProcessing) {
-        statusDot.classList.add("active");
-        statusLabel.textContent = "Processing...";
-      } else if (isError) {
-        statusDot.classList.remove("active");
-        statusLabel.textContent = "Error";
-      } else if (processedCsv) {
-        statusDot.classList.add("active");
-        statusLabel.textContent = "Ready to download";
-      } else {
-        statusDot.classList.remove("active");
-        statusLabel.textContent = "Waiting for files";
-      }
+  function setMasterStatus(ok, msg) {
+    masterLoaded = !!ok;
+    if (masterLoaded) {
+      masterDot.classList.add("ready");
+      masterLabel.textContent = msg || "Master: loaded";
+    } else {
+      masterDot.classList.remove("ready");
+      masterLabel.textContent = msg || "Master: not loaded";
     }
+  }
 
-    function setMasterStatus(ok, msg) {
-      masterLoaded = !!ok;
-      if (masterLoaded) {
-        masterDot.classList.add("ready");
-        masterLabel.textContent = msg || "Master: loaded";
-      } else {
-        masterDot.classList.remove("ready");
-        masterLabel.textContent = msg || "Master: not loaded";
-      }
-    }
+  fileInput.addEventListener("click", function () {
+    this.setAttribute("nwsaveas", defaultFilename);
+  });
+  fileInput.addEventListener("change", handleCsvFile);
+  masterInput.addEventListener("change", handleMasterFile);
 
-    fileInput.addEventListener("click", function () {
-      this.setAttribute("nwsaveas", defaultFilename);
+  // Drag & drop helpers
+  function wireDropzone(dz, inputEl, onHandle) {
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+      dz.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
     });
-
-    fileInput.addEventListener("change", handleCsvFile);
-    masterInput.addEventListener("change", handleMasterFile);
-
-    // Drag & drop helpers
-    function wireDropzone(dz, inputEl, onHandle) {
-      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
-        dz.addEventListener(eventName, (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        });
+    ["dragenter", "dragover"].forEach((eventName) => {
+      dz.addEventListener(eventName, () => {
+        dz.style.borderColor = "rgba(148, 163, 184, 0.95)";
       });
-
-      ["dragenter", "dragover"].forEach((eventName) => {
-        dz.addEventListener(eventName, () => {
-          dz.style.borderColor = "rgba(148, 163, 184, 0.95)";
-        });
+    });
+    ["dragleave", "drop"].forEach((eventName) => {
+      dz.addEventListener(eventName, () => {
+        dz.style.borderColor = "rgba(75, 85, 99, 0.9)";
       });
+    });
+    dz.addEventListener("drop", (e) => {
+      const dt = e.dataTransfer;
+      const files = dt?.files;
+      if (files && files[0]) {
+        inputEl.files = files;
+        onHandle({ target: inputEl });
+      }
+    });
+  }
 
-      ["dragleave", "drop"].forEach((eventName) => {
-        dz.addEventListener(eventName, () => {
-          dz.style.borderColor = "rgba(75, 85, 99, 0.9)";
-        });
-      });
+  wireDropzone(csvDropzone, fileInput, handleCsvFile);
+  wireDropzone(masterDropzone, masterInput, handleMasterFile);
 
-      dz.addEventListener("drop", (e) => {
-        const dt = e.dataTransfer;
-        const files = dt?.files;
-        if (files && files[0]) {
-          inputEl.files = files;
-          onHandle({ target: inputEl });
-        }
-      });
-    }
-
-    wireDropzone(csvDropzone, fileInput, handleCsvFile);
-    wireDropzone(masterDropzone, masterInput, handleMasterFile);
-
-    // ---------- Master Excel parsing (AAC_ActivityMaster.xlsx) ----------
-
-    function handleMasterFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      setMasterStatus(false, "Master: loading...");
-      setStatus({
-        text: "Loading AAC_ActivityMaster.xlsx...",
-        isError: false,
-        isProcessing: true,
-      });
-
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
-
-          const sheetName = workbook.SheetNames[0];
-          const ws = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
-
-          if (!json.length) {
-            setMasterStatus(false, "Master: sheet is empty");
-            setStatus({
-              text: "AAC_ActivityMaster.xlsx appears to be empty.",
-              isError: true,
-              isProcessing: false,
-            });
-            return;
-          }
-
-          // Try to guess column names: ActivityDisplay and GUI (case-insensitive)
-          const firstRow = json[0];
-          const cols = Object.keys(firstRow);
-          const findCol = (target) => {
-            const lowerT = target.toLowerCase();
-            return cols.find(
-              (c) => String(c).toLowerCase().replace(/\s+/g, "") === lowerT
-            );
-          };
-
-          const activityCol =
-            findCol("activitydisplay") ||
-            findCol("activity") ||
-            findCol("activityname");
-          const guiCol = findCol("gui");
-
-          if (!activityCol || !guiCol) {
-            setMasterStatus(false, "Master: missing required columns");
-            setStatus({
-              text:
-                "AAC_ActivityMaster.xlsx is missing required columns. " +
-                "Expected something like 'ActivityDisplay' or 'Activity', and 'GUI'.",
-              isError: true,
-              isProcessing: false,
-            });
-            return;
-          }
-
-          masterLookup = {};
-          json.forEach((row) => {
-            const rawAct = row[activityCol] ?? "";
-            const rawGui = row[guiCol] ?? "";
-            const key = normalizeActivityKey(rawAct);
-            if (!key) return;
-            masterLookup[key] = { guiRaw: String(rawGui) };
-          });
-
-          const size = Object.keys(masterLookup).length;
-          setMasterStatus(true, `Master: loaded (${size} activities)`);
+  // ---------- Master Excel parsing (AAC_ActivityMaster.xlsx) ----------
+  function handleMasterFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    setMasterStatus(false, "Master: loading...");
+    setStatus({
+      text: "Loading AAC_ActivityMaster.xlsx...",
+      isError: false,
+      isProcessing: true,
+    });
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const ws = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
+        if (!json.length) {
+          setMasterStatus(false, "Master: sheet is empty");
           setStatus({
-            text:
-              "AAC_ActivityMaster.xlsx loaded. You can now load AACActivityAttendance.csv to generate the output.",
-            isError: false,
-            isProcessing: false,
-          });
-        } catch (err) {
-          console.error(err);
-          setMasterStatus(false, "Master: error");
-          setStatus({
-            text: "Error reading AAC_ActivityMaster.xlsx: " + err.message,
+            text: "AAC_ActivityMaster.xlsx appears to be empty.",
             isError: true,
             isProcessing: false,
           });
+          return;
         }
-      };
-      reader.onerror = function () {
+        // Try to guess column names: ActivityDisplay and GUI (case-insensitive)
+        const firstRow = json[0];
+        const cols = Object.keys(firstRow);
+        const findCol = (target) => {
+          const lowerT = target.toLowerCase();
+          return cols.find(
+            (c) => String(c).toLowerCase().replace(/\s+/g, "") === lowerT
+          );
+        };
+        const activityCol =
+          findCol("activitydisplay") ||
+          findCol("activity") ||
+          findCol("activityname");
+        const guiCol = findCol("gui");
+        if (!activityCol || !guiCol) {
+          setMasterStatus(false, "Master: missing required columns");
+          setStatus({
+            text:
+              "AAC_ActivityMaster.xlsx is missing required columns. " +
+              "Expected something like 'ActivityDisplay' or 'Activity', and 'GUI'.",
+            isError: true,
+            isProcessing: false,
+          });
+          return;
+        }
+        masterLookup = {};
+        json.forEach((row) => {
+          const rawAct = row[activityCol] ?? "";
+          const rawGui = row[guiCol] ?? "";
+          const key = normalizeActivityKey(rawAct);
+          if (!key) return;
+          masterLookup[key] = { guiRaw: String(rawGui) };
+        });
+        const size = Object.keys(masterLookup).length;
+        setMasterStatus(true, `Master: loaded (${size} activities)`);
+        setStatus({
+          text:
+            "AAC_ActivityMaster.xlsx loaded. You can now load AACActivityAttendance.csv to generate the output.",
+          isError: false,
+          isProcessing: false,
+        });
+      } catch (err) {
+        console.error(err);
         setMasterStatus(false, "Master: error");
         setStatus({
-          text: "Error loading AAC_ActivityMaster.xlsx.",
+          text: "Error reading AAC_ActivityMaster.xlsx: " + err.message,
           isError: true,
           isProcessing: false,
         });
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    function normalizeActivityKey(raw) {
-      if (raw === undefined || raw === null) return "";
-      const s = String(raw);
-      const firstLine = s.split(/\r|\n/)[0] || "";
-      return firstLine.trim().toLowerCase();
-    }
-
-    function guiFlagFromMaster(activityDisplay) {
-      if (!activityDisplay) return "FALSE";
-      const key = normalizeActivityKey(activityDisplay);
-      if (!key) return "FALSE";
-      const entry = masterLookup[key];
-      if (!entry) return "FALSE";
-      const guiRaw = (entry.guiRaw || "").toString().trim().toLowerCase();
-      if (guiRaw.startsWith("yes")) return "TRUE";
-      return "FALSE";
-    }
-
-    // ---------- CSV processing (attendance) ----------
-
-    function handleCsvFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      resetOutput();
-
-      let warning = "";
-      if (file.name !== defaultFilename) {
-        warning = 'Warning: File is not named "' + defaultFilename + '".\n';
       }
-
-      const masterNote = masterLoaded
-        ? ""
-        : "Note: AAC_ActivityMaster.xlsx not loaded yet; gui will default to FALSE.\n";
-
+    };
+    reader.onerror = function () {
+      setMasterStatus(false, "Master: error");
       setStatus({
-        text: warning + masterNote + "Reading attendance file...",
-        isError: false,
-        isProcessing: true,
+        text: "Error loading AAC_ActivityMaster.xlsx.",
+        isError: true,
+        isProcessing: false,
       });
+    };
+    reader.readAsArrayBuffer(file);
+  }
 
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        try {
-          const result = processText(e.target.result);
-          processedCsv = result.csv;
-          processedRowCount = result.rowCount;
-          rowCountEl.textContent = String(processedRowCount);
-          downloadBtn.disabled = !processedCsv;
-          setStatus({
-            text:
-              warning +
-              masterNote +
-              'Processing done. Click "Download processed CSV".',
-            isError: false,
-            isProcessing: false,
-          });
-        } catch (err) {
-          console.error(err);
-          setStatus({
-            text: warning + "Error processing file: " + err.message,
-            isError: true,
-            isProcessing: false,
-          });
-        }
-      };
-      reader.onerror = function () {
+  function normalizeActivityKey(raw) {
+    if (raw === undefined || raw === null) return "";
+    const s = String(raw);
+    const firstLine = s.split(/\r|\n/)[0] || "";
+    return firstLine.trim().toLowerCase();
+  }
+
+  function guiFlagFromMaster(activityDisplay) {
+    if (!activityDisplay) return "FALSE";
+    const key = normalizeActivityKey(activityDisplay);
+    if (!key) return "FALSE";
+    const entry = masterLookup[key];
+    if (!entry) return "FALSE";
+    const guiRaw = (entry.guiRaw || "").toString().trim().toLowerCase();
+    if (guiRaw.startsWith("yes")) return "TRUE";
+    return "FALSE";
+  }
+
+  // ---------- CSV processing (attendance) ----------
+  function handleCsvFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    resetOutput();
+    let warning = "";
+    if (file.name !== defaultFilename) {
+      warning = 'Warning: File is not named "' + defaultFilename + '".\n';
+    }
+    const masterNote = masterLoaded
+      ? ""
+      : "Note: AAC_ActivityMaster.xlsx not loaded yet; gui will default to FALSE.\n";
+    setStatus({
+      text: warning + masterNote + "Reading attendance file...",
+      isError: false,
+      isProcessing: true,
+    });
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const result = processText(e.target.result);
+        processedCsv = result.csv;
+        processedRowCount = result.rowCount;
+        rowCountEl.textContent = String(processedRowCount);
+        downloadBtn.disabled = !processedCsv;
         setStatus({
-          text: warning + "Error reading file.",
+          text:
+            warning +
+            masterNote +
+            'Processing done. Click "Download processed CSV".',
+          isError: false,
+          isProcessing: false,
+        });
+      } catch (err) {
+        console.error(err);
+        setStatus({
+          text: warning + "Error processing file: " + err.message,
           isError: true,
           isProcessing: false,
         });
-      };
-      reader.readAsText(file);
-    }
-
-    function parseDelimitedText(text, delimiter) {
-      const rows = [];
-      const row = [];
-      let field = "";
-      let inQuotes = false;
-
-      for (let i = 0; i < text.length; i++) {
-        const ch = text[i];
-        if (ch === '"') {
-          if (inQuotes && i + 1 < text.length && text[i + 1] === '"') {
-            field += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (ch === delimiter && !inQuotes) {
-          row.push(field);
-          field = "";
-        } else if (ch === "\r") {
-        } else if (ch === "\n" && !inQuotes) {
-          row.push(field);
-          rows.push(row.slice());
-          field = "";
-          row.length = 0;
-        } else {
-          field += ch;
-        }
       }
-      if (field !== "" || row.length > 0) {
+    };
+    reader.onerror = function () {
+      setStatus({
+        text: warning + "Error reading file.",
+        isError: true,
+        isProcessing: false,
+      });
+    };
+    reader.readAsText(file);
+  }
+
+  function parseDelimitedText(text, delimiter) {
+    const rows = [];
+    const row = [];
+    let field = "";
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === '"') {
+        if (inQuotes && i + 1 < text.length && text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === delimiter && !inQuotes) {
+        row.push(field);
+        field = "";
+      } else if (ch === "\r") {
+      } else if (ch === "\n" && !inQuotes) {
         row.push(field);
         rows.push(row.slice());
+        field = "";
+        row.length = 0;
+      } else {
+        field += ch;
       }
-      return rows;
     }
-
-    function detectDelimiter(headerLine) {
-      if (headerLine.indexOf("\t") !== -1) return "\t";
-      return ",";
+    if (field !== "" || row.length > 0) {
+      row.push(field);
+      rows.push(row.slice());
     }
+    return rows;
+  }
 
-    function csvEscape(s) {
-      if (s === undefined || s === null) return "";
-      s = String(s);
-      if (s.includes('"')) s = s.replace(/"/g, '""');
-      if (s.includes(",") || s.includes("\n") || s.includes('"')) return `"${s}"`;
-      return s;
-    }
+  function detectDelimiter(headerLine) {
+    if (headerLine.indexOf("\t") !== -1) return "\t";
+    return ",";
+  }
 
-    function formatDateToDDMMYYFromDate(d) {
-      if (!(d instanceof Date) || isNaN(d.getTime())) return "";
-      const dd = String(d.getDate()).padStart(2, "0");
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const yy = String(d.getFullYear() % 100).padStart(2, "0");
-      return `${dd}-${mm}-${yy}`;
-    }
+  function csvEscape(s) {
+    if (s === undefined || s === null) return "";
+    s = String(s);
+    if (s.includes('"')) s = s.replace(/"/g, '""');
+    if (s.includes(",") || s.includes("\n") || s.includes('"')) return `"${s}"`;
+    return s;
+  }
 
-    function formatActivityDate(raw) {
-      if (raw === undefined || raw === null) return "";
-      const s = String(raw).trim();
-      if (s === "") return "";
-      if (/^\d+$/.test(s)) {
-        const serial = parseInt(s, 10);
-        if (serial > 30 && serial < 60000) {
-          const epoch = Date.UTC(1899, 11, 31);
-          const offset = serial > 59 ? -1 : 0;
-          const ms = epoch + (serial + offset) * 24 * 60 * 60 * 1000;
-          const d = new Date(ms);
-          const formatted = formatDateToDDMMYYFromDate(d);
-          if (formatted) return formatted;
-        }
+  function formatDateToDDMMYYFromDate(d) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return "";
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yy = String(d.getFullYear() % 100).padStart(2, "0");
+    return `${dd}-${mm}-${yy}`;
+  }
+
+  function formatActivityDate(raw) {
+    if (raw === undefined || raw === null) return "";
+    const s = String(raw).trim();
+    if (s === "") return "";
+    if (/^\d+$/.test(s)) {
+      const serial = parseInt(s, 10);
+      if (serial > 30 && serial < 60000) {
+        const epoch = Date.UTC(1899, 11, 31);
+        const offset = serial > 59 ? -1 : 0;
+        const ms = epoch + (serial + offset) * 24 * 60 * 60 * 1000;
+        const d = new Date(ms);
+        const formatted = formatDateToDDMMYYFromDate(d);
+        if (formatted) return formatted;
       }
-      const parsed = Date.parse(s);
-      if (!isNaN(parsed)) {
-        return formatDateToDDMMYYFromDate(new Date(parsed));
-      }
-      const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
-      if (m) {
-        let p1 = parseInt(m[1], 10),
-          p2 = parseInt(m[2], 10),
-          p3 = parseInt(m[3], 10);
-        let day, month, year;
-        if (p3 > 31) {
-          year = p3;
-          if (p1 > 12) {
-            day = p1;
-            month = p2;
-          } else if (p2 > 12) {
-            day = p2;
-            month = p1;
-          } else {
-            day = p1;
-            month = p2;
-          }
+    }
+    const parsed = Date.parse(s);
+    if (!isNaN(parsed)) {
+      return formatDateToDDMMYYFromDate(new Date(parsed));
+    }
+    const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (m) {
+      let p1 = parseInt(m[1], 10),
+        p2 = parseInt(m[2], 10),
+        p3 = parseInt(m[3], 10);
+      let day, month, year;
+      if (p3 > 31) {
+        year = p3;
+        if (p1 > 12) {
+          day = p1;
+          month = p2;
+        } else if (p2 > 12) {
+          day = p2;
+          month = p1;
         } else {
-          year = 2000 + p3;
           day = p1;
           month = p2;
         }
-        const d = new Date(year, month - 1, day);
-        if (!isNaN(d.getTime())) return formatDateToDDMMYYFromDate(d);
+      } else {
+        year = 2000 + p3;
+        day = p1;
+        month = p2;
       }
-      return s;
+      const d = new Date(year, month - 1, day);
+      if (!isNaN(d.getTime())) return formatDateToDDMMYYFromDate(d);
     }
+    return s;
+  }
 
-    function processText(text) {
-      if (!text) return { csv: "", rowCount: 0 };
-
-      if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-
-      const firstNL = text.indexOf("\n");
-      const firstLine = firstNL === -1 ? text : text.slice(0, firstNL);
-      const delimiter = detectDelimiter(firstLine);
-
-      const rows = parseDelimitedText(text, delimiter);
-
-      let headerRowIndex = 0;
-      while (
-        headerRowIndex < rows.length &&
-        rows[headerRowIndex].join("").trim() === ""
-      )
-        headerRowIndex++;
-      if (headerRowIndex >= rows.length)
-        throw new Error("No header row found.");
-
-      let headers = rows[headerRowIndex].map((h) => (h || "").trim());
-      if (headers.length > 0 && headers[0].charCodeAt(0) === 0xfeff) {
-        headers[0] = headers[0].slice(1);
-      }
-
-      const idxOf = (name) => {
-        let i = headers.indexOf(name);
-        if (i !== -1) return i;
-        const lower = name.toLowerCase();
-        return headers.findIndex((h) => (h || "").toLowerCase() === lower);
-      };
-
-      const required = [
-        "Attendance",
-        "ActivityDateDisplay",
-        "ActivityDisplay",
-        "FullName",
-        "Age",
-        "PostalCode1",
-        "Gender",
-        "RegistrationDocumentNumber",
-      ];
-
-      const indices = {};
-      const missing = [];
-      required.forEach((r) => {
-        const i = idxOf(r);
-        if (i === -1) missing.push(r);
-        indices[r] = i;
-      });
-
-      if (missing.length) {
-        throw new Error("Missing required header(s): " + missing.join(", "));
-      }
-
-      const outputLines = [
-        "activitydatedisplay,activitydisplay,fullname,age,postalcode1,gender,registrationdocumentnumber,gui",
-      ];
-
-      let count = 0;
-
-      for (let r = headerRowIndex + 1; r < rows.length; r++) {
-        const row = rows[r];
-        if (!row || row.join("").trim() === "") continue;
-
-        while (row.length < headers.length) row.push("");
-
-        const attendanceVal = (row[indices["Attendance"]] || "")
-          .toString()
-          .trim();
-        if (attendanceVal === "1") {
-          const rawADisp = row[indices["ActivityDisplay"]] || "";
-          const adispFirstLine = (rawADisp.split(/\r|\n/)[0] || "").trim();
-
-          const rawDate = row[indices["ActivityDateDisplay"]] || "";
-          const formattedDate = formatActivityDate(rawDate);
-
-          const guiFlag = guiFlagFromMaster(adispFirstLine);
-
-          const outRow = [
-            formattedDate,
-            adispFirstLine,
-            row[indices["FullName"]],
-            row[indices["Age"]],
-            row[indices["PostalCode1"]],
-            row[indices["Gender"]],
-            row[indices["RegistrationDocumentNumber"]],
-            guiFlag,
-          ]
-            .map(csvEscape)
-            .join(",");
-
-          outputLines.push(outRow);
-          count++;
-        }
-      }
-
-      return {
-        csv: outputLines.join("\n"),
-        rowCount: count,
-      };
+  function processText(text) {
+    if (!text) return { csv: "", rowCount: 0 };
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    const firstNL = text.indexOf("\n");
+    const firstLine = firstNL === -1 ? text : text.slice(0, firstNL);
+    const delimiter = detectDelimiter(firstLine);
+    const rows = parseDelimitedText(text, delimiter);
+    let headerRowIndex = 0;
+    while (
+      headerRowIndex < rows.length &&
+      rows[headerRowIndex].join("").trim() === ""
+    )
+      headerRowIndex++;
+    if (headerRowIndex >= rows.length)
+      throw new Error("No header row found.");
+    let headers = rows[headerRowIndex].map((h) => (h || "").trim());
+    if (headers.length > 0 && headers[0].charCodeAt(0) === 0xfeff) {
+      headers[0] = headers[0].slice(1);
     }
-
-    function downloadCsv() {
-      if (!processedCsv) return;
-      const blob = new Blob([processedCsv], {
-        type: "text/csv;charset=utf-8",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "AACFilteredAttendance.csv";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+    const idxOf = (name) => {
+      let i = headers.indexOf(name);
+      if (i !== -1) return i;
+      const lower = name.toLowerCase();
+      return headers.findIndex((h) => (h || "").toLowerCase() === lower);
+    };
+    const required = [
+      "Attendance",
+      "ActivityDateDisplay",
+      "ActivityDisplay",
+      "FullName",
+      "Age",
+      "PostalCode1",
+      "Gender",
+      "RegistrationDocumentNumber",
+    ];
+    const indices = {};
+    const missing = [];
+    required.forEach((r) => {
+      const i = idxOf(r);
+      if (i === -1) missing.push(r);
+      indices[r] = i;
+    });
+    if (missing.length) {
+      throw new Error("Missing required header(s): " + missing.join(", "));
     }
-  </script>
-</body>
-</html>
+    const outputLines = [
+      "activitydatedisplay,activitydisplay,fullname,age,postalcode1,gender,registrationdocumentnumber,gui",
+    ];
+    let count = 0;
+    for (let r = headerRowIndex + 1; r < rows.length; r++) {
+      const row = rows[r];
+      if (!row || row.join("").trim() === "") continue;
+      while (row.length < headers.length) row.push("");
+      const attendanceVal = (row[indices["Attendance"]] || "")
+        .toString()
+        .trim();
+      if (attendanceVal === "1") {
+        const rawADisp = row[indices["ActivityDisplay"]] || "";
+        const adispFirstLine = (rawADisp.split(/\r|\n/)[0] || "").trim();
+        const rawDate = row[indices["ActivityDateDisplay"]] || "";
+        const formattedDate = formatActivityDate(rawDate);
+        const guiFlag = guiFlagFromMaster(adispFirstLine);
+        const outRow = [
+          formattedDate,
+          adispFirstLine,
+          row[indices["FullName"]],
+          row[indices["Age"]],
+          row[indices["PostalCode1"]],
+          row[indices["Gender"]],
+          row[indices["RegistrationDocumentNumber"]],
+          guiFlag,
+        ]
+          .map(csvEscape)
+          .join(",");
+        outputLines.push(outRow);
+        count++;
+      }
+    }
+    return {
+      csv: outputLines.join("\n"),
+      rowCount: count,
+    };
+  }
+
+  function downloadCsv() {
+    if (!processedCsv) return;
+    const blob = new Blob([processedCsv], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "AACFilteredAttendance.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+</script></body></html>
