@@ -668,6 +668,7 @@
   let processedCsv = "";
   let processedRowCount = 0;
   const defaultFilename = "AACActivityAttendance.csv";
+
   const fileInput = document.getElementById("fileInput");
   const masterInput = document.getElementById("masterInput");
   const statusEl = document.getElementById("status");
@@ -761,12 +762,14 @@
   function handleMasterFile(event) {
     const file = event.target.files[0];
     if (!file) return;
+
     setMasterStatus(false, "Master: loading...");
     setStatus({
       text: "Loading AAC_ActivityMaster.xlsx...",
       isError: false,
       isProcessing: true,
     });
+
     const reader = new FileReader();
     reader.onload = function (e) {
       try {
@@ -784,7 +787,7 @@
           });
           return;
         }
-        // Try to guess column names: ActivityDisplay and GUI (case-insensitive)
+
         const firstRow = json[0];
         const cols = Object.keys(firstRow);
         const findCol = (target) => {
@@ -793,11 +796,13 @@
             (c) => String(c).toLowerCase().replace(/\s+/g, "") === lowerT
           );
         };
+
         const activityCol =
           findCol("activitydisplay") ||
           findCol("activity") ||
           findCol("activityname");
         const guiCol = findCol("gui");
+
         if (!activityCol || !guiCol) {
           setMasterStatus(false, "Master: missing required columns");
           setStatus({
@@ -809,6 +814,7 @@
           });
           return;
         }
+
         masterLookup = {};
         json.forEach((row) => {
           const rawAct = row[activityCol] ?? "";
@@ -817,6 +823,7 @@
           if (!key) return;
           masterLookup[key] = { guiRaw: String(rawGui) };
         });
+
         const size = Object.keys(masterLookup).length;
         setMasterStatus(true, `Master: loaded (${size} activities)`);
         setStatus({
@@ -853,10 +860,10 @@
     return firstLine.trim().toLowerCase();
   }
 
-  function guiFlagFromMaster(activityDisplay) {
-    if (!activityDisplay) return "FALSE";
-    const key = normalizeActivityKey(activityDisplay);
-    if (!key) return "FALSE";
+  function guiFlagFromMaster(activitydisplayFinal) {
+    // activitydisplayFinal is already the first-line trimmed string from pass 1
+    if (!activitydisplayFinal) return "FALSE";
+    const key = activitydisplayFinal.trim().toLowerCase();
     const entry = masterLookup[key];
     if (!entry) return "FALSE";
     const guiRaw = (entry.guiRaw || "").toString().trim().toLowerCase();
@@ -868,23 +875,28 @@
   function handleCsvFile(event) {
     const file = event.target.files[0];
     if (!file) return;
+
     resetOutput();
+
     let warning = "";
     if (file.name !== defaultFilename) {
       warning = 'Warning: File is not named "' + defaultFilename + '".\n';
     }
+
     const masterNote = masterLoaded
       ? ""
       : "Note: AAC_ActivityMaster.xlsx not loaded yet; gui will default to FALSE.\n";
+
     setStatus({
       text: warning + masterNote + "Reading attendance file...",
       isError: false,
       isProcessing: true,
     });
+
     const reader = new FileReader();
     reader.onload = function (e) {
       try {
-        const result = processText(e.target.result);
+        const result = processTextTwoPass(e.target.result);
         processedCsv = result.csv;
         processedRowCount = result.rowCount;
         rowCountEl.textContent = String(processedRowCount);
@@ -1019,13 +1031,16 @@
     return s;
   }
 
-  function processText(text) {
+  // Two-pass processing: first build rows, then add gui.
+  function processTextTwoPass(text) {
     if (!text) return { csv: "", rowCount: 0 };
     if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
     const firstNL = text.indexOf("\n");
     const firstLine = firstNL === -1 ? text : text.slice(0, firstNL);
     const delimiter = detectDelimiter(firstLine);
     const rows = parseDelimitedText(text, delimiter);
+
     let headerRowIndex = 0;
     while (
       headerRowIndex < rows.length &&
@@ -1034,16 +1049,19 @@
       headerRowIndex++;
     if (headerRowIndex >= rows.length)
       throw new Error("No header row found.");
+
     let headers = rows[headerRowIndex].map((h) => (h || "").trim());
     if (headers.length > 0 && headers[0].charCodeAt(0) === 0xfeff) {
       headers[0] = headers[0].slice(1);
     }
+
     const idxOf = (name) => {
       let i = headers.indexOf(name);
       if (i !== -1) return i;
       const lower = name.toLowerCase();
       return headers.findIndex((h) => (h || "").toLowerCase() === lower);
     };
+
     const required = [
       "Attendance",
       "ActivityDateDisplay",
@@ -1054,6 +1072,7 @@
       "Gender",
       "RegistrationDocumentNumber",
     ];
+
     const indices = {};
     const missing = [];
     required.forEach((r) => {
@@ -1061,45 +1080,66 @@
       if (i === -1) missing.push(r);
       indices[r] = i;
     });
+
     if (missing.length) {
       throw new Error("Missing required header(s): " + missing.join(", "));
     }
-    const outputLines = [
-      "activitydatedisplay,activitydisplay,fullname,age,postalcode1,gender,registrationdocumentnumber,gui",
-    ];
-    let count = 0;
+
+    // PASS 1: build intermediate rows
+    const pass1Rows = [];
     for (let r = headerRowIndex + 1; r < rows.length; r++) {
       const row = rows[r];
       if (!row || row.join("").trim() === "") continue;
       while (row.length < headers.length) row.push("");
+
       const attendanceVal = (row[indices["Attendance"]] || "")
         .toString()
         .trim();
-      if (attendanceVal === "1") {
-        const rawADisp = row[indices["ActivityDisplay"]] || "";
-        const adispFirstLine = (rawADisp.split(/\r|\n/)[0] || "").trim();
-        const rawDate = row[indices["ActivityDateDisplay"]] || "";
-        const formattedDate = formatActivityDate(rawDate);
-        const guiFlag = guiFlagFromMaster(adispFirstLine);
-        const outRow = [
-          formattedDate,
-          adispFirstLine,
-          row[indices["FullName"]],
-          row[indices["Age"]],
-          row[indices["PostalCode1"]],
-          row[indices["Gender"]],
+      if (attendanceVal !== "1") continue;
+
+      const rawADisp = row[indices["ActivityDisplay"]] || "";
+      const activitydisplay = (rawADisp.split(/\r|\n/)[0] || "").trim();
+
+      const rawDate = row[indices["ActivityDateDisplay"]] || "";
+      const activitydatedisplay = formatActivityDate(rawDate);
+
+      pass1Rows.push({
+        activitydatedisplay,
+        activitydisplay,
+        fullname: row[indices["FullName"]],
+        age: row[indices["Age"]],
+        postalcode1: row[indices["PostalCode1"]],
+        gender: row[indices["Gender"]],
+        registrationdocumentnumber:
           row[indices["RegistrationDocumentNumber"]],
-          guiFlag,
-        ]
-          .map(csvEscape)
-          .join(",");
-        outputLines.push(outRow);
-        count++;
-      }
+      });
     }
+
+    // PASS 2: compute gui and build CSV
+    const outputLines = [
+      "activitydatedisplay,activitydisplay,fullname,age,postalcode1,gender,registrationdocumentnumber,gui",
+    ];
+
+    pass1Rows.forEach((rec) => {
+      const gui = guiFlagFromMaster(rec.activitydisplay);
+      const line = [
+        rec.activitydatedisplay,
+        rec.activitydisplay,
+        rec.fullname,
+        rec.age,
+        rec.postalcode1,
+        rec.gender,
+        rec.registrationdocumentnumber,
+        gui,
+      ]
+        .map(csvEscape)
+        .join(",");
+      outputLines.push(line);
+    });
+
     return {
       csv: outputLines.join("\n"),
-      rowCount: count,
+      rowCount: pass1Rows.length,
     };
   }
 
