@@ -1,59 +1,804 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>CSV/TSV Attendance Processor</title>
+  <meta charset="UTF-8" />
+  <title>AAC Attendance CSV Processor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-soft: #111827;
+      --card: #020617;
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.12);
+      --accent-strong: #16a34a;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --border: #1f2937;
+      --danger: #f97373;
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.65);
+      --radius-lg: 18px;
+      --radius-pill: 999px;
+      --focus-ring: 0 0 0 2px rgba(34, 197, 94, 0.6);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1f2937 0, #020617 48%, #000 100%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 720px;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.98));
+      border-radius: 26px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: var(--shadow-soft);
+      padding: 22px 22px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app-shell::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(34, 197, 94, 0.2), transparent 55%),
+        radial-gradient(circle at 100% 0%, rgba(56, 189, 248, 0.16), transparent 50%);
+      opacity: 0.65;
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+
+    .app-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .app-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .title-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 1px;
+    }
+
+    .app-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.8);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .app-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.02em;
+      color: #f9fafb;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .app-chip {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(22, 163, 74, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      max-width: 460px;
+    }
+
+    .meta-pill {
+      align-self: center;
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(55, 65, 81, 0.85);
+      font-size: 11px;
+      color: #e5e7eb;
+    }
+
+    .meta-pill span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .meta-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.8);
+    }
+
+    .meta-dot.accent {
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
+    }
+
+    .main-card {
+      margin-top: 12px;
+      padding: 16px 14px 14px;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: radial-gradient(circle at 0 0, rgba(34, 197, 94, 0.13), transparent 55%),
+        radial-gradient(circle at 100% 0, rgba(56, 189, 248, 0.16), transparent 55%),
+        linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(15, 23, 42, 0.96));
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2.4fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 720px) {
+      .main-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      body {
+        padding: 16px;
+      }
+      .app-shell {
+        padding: 18px 16px 16px;
+        border-radius: 22px;
+      }
+      .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .meta-pill {
+        align-self: flex-start;
+      }
+    }
+
+    .upload-panel {
+      padding: 14px 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: rgba(15, 23, 42, 0.92);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .upload-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pill-hint {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      color: var(--muted);
+    }
+
+    .dropzone {
+      position: relative;
+      border-radius: 13px;
+      border: 1px dashed rgba(75, 85, 99, 0.9);
+      background: linear-gradient(
+        135deg,
+        rgba(15, 23, 42, 0.78),
+        rgba(2, 6, 23, 0.96)
+      );
+      padding: 10px 11px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+    }
+
+    .dropzone:hover {
+      border-color: rgba(148, 163, 184, 0.9);
+      background: linear-gradient(
+        135deg,
+        rgba(15, 23, 42, 0.9),
+        rgba(2, 6, 23, 0.98)
+      );
+      transform: translateY(-1px);
+    }
+
+    .dropzone:focus-within {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .dropzone-icon-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .file-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 12px;
+      background: radial-gradient(circle at 30% 0%, #22c55e 10%, #16a34a 55%, #0f766e 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ecfdf5;
+      font-size: 18px;
+      box-shadow: 0 12px 22px rgba(16, 185, 129, 0.55);
+    }
+
+    .dropzone-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 12px;
+    }
+
+    .drop-main {
+      font-size: 13px;
+      color: #e5e7eb;
+    }
+
+    .drop-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .file-badge-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .file-type-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      color: #e5e7eb;
+    }
+
+    input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .processing-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .status-chip {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(51, 65, 85, 0.95);
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.95);
+    }
+
+    .status-dot.active {
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
+    }
+
+    .status-text {
+      font-size: 11px;
+      color: var(--muted);
+      min-height: 16px;
+      white-space: pre-line;
+    }
+
+    .download-panel {
+      padding: 14px 12px 11px;
+      border-radius: 14px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .download-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .pill-success-soft {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(21, 128, 61, 0.18);
+      border: 1px solid rgba(34, 197, 94, 0.55);
+      color: var(--accent);
+    }
+
+    .download-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .download-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .primary-btn {
+      border: none;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #022c22;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 16px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 12px 18px rgba(34, 197, 94, 0.4);
+      transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+      white-space: nowrap;
+    }
+
+    .primary-btn span.icon {
+      font-size: 14px;
+    }
+
+    .primary-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 24px rgba(34, 197, 94, 0.5);
+      filter: brightness(1.04);
+    }
+
+    .primary-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 16px rgba(34, 197, 94, 0.45);
+      filter: brightness(0.98);
+    }
+
+    .primary-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+      filter: none;
+    }
+
+    .pill-note {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .pill-note strong {
+      color: #e5e7eb;
+    }
+
+    .rules-panel {
+      padding: 13px 11px 11px;
+      border-radius: 14px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .rules-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: #e5e7eb;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rules-title-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.9);
+    }
+
+    .rules-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 2px 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .rules-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .rules-bullet {
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.9);
+      margin-top: 5px;
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      font-size: 10px;
+      color: rgba(148, 163, 184, 0.9);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .footer-note strong {
+      color: #e5e7eb;
+    }
+
+    .error-text {
+      color: var(--danger);
+    }
+  </style>
 </head>
 <body>
-  <h2>Select local CSV/TSV file:</h2>
-  <input type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" id="fileInput" />
-  <button onclick="downloadCsv()" id="downloadBtn" style="display:none;">Download Processed CSV</button>
-  <pre id="status"></pre>
+  <div class="app-shell">
+    <div class="app-inner">
+      <header class="app-header">
+        <div class="title-block">
+          <div class="title-row">
+            <div class="app-badge">
+              <span class="app-dot"></span>
+              AAC Tools · Attendance
+            </div>
+          </div>
+          <h1>
+            CSV Attendance Processor
+            <span class="app-chip">Client-side only</span>
+          </h1>
+          <p class="subtitle">
+            Upload <strong>AACActivityAttendance.csv</strong> from Ingot (AAC Activity Attendance report) to generate a clean CSV with only attendance = 1 and key fields.
+          </p>
+        </div>
+        <div class="meta-pill">
+          <span>
+            <span class="meta-dot accent"></span>
+            Filters Attendance = 1
+          </span>
+          <span>
+            <span class="meta-dot"></span>
+            Keeps selected columns
+          </span>
+        </div>
+      </header>
+
+      <section class="main-card">
+        <div class="main-grid">
+          <!-- Left: upload + status -->
+          <div class="upload-panel">
+            <div class="upload-label">
+              Source file
+              <span class="pill-hint">From Ingot &gt; Report &gt; AAC Activity Attendance</span>
+            </div>
+
+            <label class="dropzone" id="dropzone">
+              <input
+                type="file"
+                accept=".csv,.tsv,text/csv,text/tab-separated-values"
+                id="fileInput"
+              />
+              <div class="dropzone-icon-row">
+                <div class="file-icon" aria-hidden="true">
+                  ⬆
+                </div>
+                <div class="dropzone-text">
+                  <span class="drop-main">
+                    Click to choose file, or drag &amp; drop here
+                  </span>
+                  <span class="drop-sub">
+                    Recommended filename: <strong>AACActivityAttendance.csv</strong>
+                  </span>
+                </div>
+              </div>
+              <div class="file-badge-row">
+                <span class="file-type-badge">CSV / TSV</span>
+                <span class="file-type-badge">Local processing only</span>
+              </div>
+            </label>
+
+            <div class="processing-row">
+              <div class="status-chip" id="statusChip">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusLabel">Waiting for file</span>
+              </div>
+              <div class="pill-note">
+                Processed rows: <strong id="rowCount">0</strong>
+              </div>
+            </div>
+            <div class="status-text" id="status"></div>
+          </div>
+
+          <!-- Right: rules + download -->
+          <div class="download-panel">
+            <div class="download-title">
+              <span>Output file</span>
+              <span class="pill-success-soft">
+                AACFilteredAttendance.csv
+              </span>
+            </div>
+            <p class="download-meta">
+              Contains only rows where Attendance = 1, with ActivityDateDisplay formatted, ActivityDisplay truncated to first line, and selected demographic fields.
+            </p>
+
+            <div class="download-actions">
+              <button
+                class="primary-btn"
+                id="downloadBtn"
+                onclick="downloadCsv()"
+                disabled
+              >
+                <span class="icon">⬇</span>
+                <span>Download processed CSV</span>
+              </button>
+              <div class="pill-note">
+                File is generated in your browser and never uploaded.
+              </div>
+            </div>
+
+            <div class="rules-panel">
+              <div class="rules-title">
+                <span class="rules-title-dot"></span>
+                Transformation rules
+              </div>
+              <ul class="rules-list">
+                <li>
+                  <span class="rules-bullet"></span>
+                  <span>Keep only records where Attendance = 1.</span>
+                </li>
+                <li>
+                  <span class="rules-bullet"></span>
+                  <span>Output fields: ActivityDateDisplay, ActivityDisplay, FullName, Age, PostalCode1, Gender, RegistrationDocumentNumber.</span>
+                </li>
+                <li>
+                  <span class="rules-bullet"></span>
+                  <span>ActivityDisplay keeps only the first line (before line breaks).</span>
+                </li>
+                <li>
+                  <span class="rules-bullet"></span>
+                  <span>ActivityDateDisplay is formatted to dd-mm-yy where possible; otherwise, original text is kept.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-note">
+          <span>
+            <strong>Tip:</strong> If you see a missing header error, check that you exported the AAC Activity Attendance report with all standard columns.
+          </span>
+          <span>
+            Built for AAC attendance workflows · Works fully offline
+          </span>
+        </div>
+      </section>
+    </div>
+  </div>
 
   <script>
-    let processedCsv = '';
-    let defaultFilename = 'AACActivityAttendance.csv';
+    let processedCsv = "";
+    let processedRowCount = 0;
+    const defaultFilename = "AACActivityAttendance.csv";
 
-    document.getElementById('fileInput').addEventListener('click', function() {
-      this.setAttribute('nwsaveas', defaultFilename);
+    const fileInput = document.getElementById("fileInput");
+    const statusEl = document.getElementById("status");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const statusDot = document.getElementById("statusDot");
+    const statusLabel = document.getElementById("statusLabel");
+    const rowCountEl = document.getElementById("rowCount");
+    const dropzone = document.getElementById("dropzone");
+
+    fileInput.addEventListener("click", function () {
+      this.setAttribute("nwsaveas", defaultFilename);
     });
 
-    document.getElementById('fileInput').addEventListener('change', handleFile);
+    fileInput.addEventListener("change", handleFile);
+
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      dropzone.addEventListener(eventName, () => {
+        dropzone.style.borderColor = "rgba(148, 163, 184, 0.95)";
+      });
+    });
+
+    ["dragleave", "drop"].forEach((eventName) => {
+      dropzone.addEventListener(eventName, () => {
+        dropzone.style.borderColor = "rgba(75, 85, 99, 0.9)";
+      });
+    });
+
+    dropzone.addEventListener("drop", (e) => {
+      const dt = e.dataTransfer;
+      const files = dt?.files;
+      if (files && files[0]) {
+        fileInput.files = files;
+        handleFile({ target: fileInput });
+      }
+    });
+
+    function setStatus({ text, isError = false, isProcessing = false }) {
+      statusEl.textContent = text || "";
+      statusEl.classList.toggle("error-text", isError);
+      if (isProcessing) {
+        statusDot.classList.add("active");
+        statusLabel.textContent = "Processing...";
+      } else if (isError) {
+        statusDot.classList.remove("active");
+        statusLabel.textContent = "Error";
+      } else if (processedCsv) {
+        statusDot.classList.add("active");
+        statusLabel.textContent = "Ready to download";
+      } else {
+        statusDot.classList.remove("active");
+        statusLabel.textContent = "Waiting for file";
+      }
+    }
 
     function handleFile(event) {
       const file = event.target.files[0];
       if (!file) return;
-      const statusEl = document.getElementById('status');
-      statusEl.textContent = '';
 
+      processedCsv = "";
+      processedRowCount = 0;
+      rowCountEl.textContent = "0";
+      downloadBtn.disabled = true;
+
+      let warning = "";
       if (file.name !== defaultFilename) {
-        statusEl.textContent = 'Warning: File is not named "' + defaultFilename + '".\n';
+        warning =
+          'Warning: File is not named "' + defaultFilename + '".\n';
       }
 
+      setStatus({
+        text: warning + "Reading file...",
+        isError: false,
+        isProcessing: true,
+      });
+
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = function (e) {
         try {
-          processedCsv = processText(e.target.result);
-          document.getElementById('downloadBtn').style.display = 'inline';
-          statusEl.textContent += 'Processing done. Click "Download Processed CSV".';
+          const result = processText(e.target.result);
+          processedCsv = result.csv;
+          processedRowCount = result.rowCount;
+          rowCountEl.textContent = String(processedRowCount);
+          downloadBtn.disabled = !processedCsv;
+          setStatus({
+            text:
+              warning +
+              'Processing done. Click "Download processed CSV".',
+            isError: false,
+            isProcessing: false,
+          });
         } catch (err) {
-          statusEl.textContent += 'Error processing file: ' + err.message;
           console.error(err);
+          setStatus({
+            text: warning + "Error processing file: " + err.message,
+            isError: true,
+            isProcessing: false,
+          });
         }
+      };
+      reader.onerror = function () {
+        setStatus({
+          text: warning + "Error reading file.",
+          isError: true,
+          isProcessing: false,
+        });
       };
       reader.readAsText(file);
     }
 
-    // Robust parser for whole CSV/TSV text.
-    // Supports quoted fields with escaped quotes ("") and embedded newlines.
     function parseDelimitedText(text, delimiter) {
       const rows = [];
       const row = [];
-      let field = '';
+      let field = "";
       let inQuotes = false;
+
       for (let i = 0; i < text.length; i++) {
         const ch = text[i];
         if (ch === '"') {
-          // if currently in quotes and next char is also quote -> escaped quote
           if (inQuotes && i + 1 < text.length && text[i + 1] === '"') {
             field += '"';
             i++;
@@ -62,20 +807,18 @@
           }
         } else if (ch === delimiter && !inQuotes) {
           row.push(field);
-          field = '';
-        } else if (ch === '\r') {
-          // ignore CR
-        } else if (ch === '\n' && !inQuotes) {
+          field = "";
+        } else if (ch === "\r") {
+        } else if (ch === "\n" && !inQuotes) {
           row.push(field);
           rows.push(row.slice());
-          field = '';
+          field = "";
           row.length = 0;
         } else {
           field += ch;
         }
       }
-      // push last field/row if any
-      if (field !== '' || row.length > 0) {
+      if (field !== "" || row.length > 0) {
         row.push(field);
         rows.push(row.slice());
       }
@@ -83,40 +826,33 @@
     }
 
     function detectDelimiter(headerLine) {
-      // common delimiters: comma and tab. Choose tab if tab chars present, else comma.
-      if (headerLine.indexOf('\t') !== -1) return '\t';
-      return ',';
+      if (headerLine.indexOf("\t") !== -1) return "\t";
+      return ",";
     }
 
     function csvEscape(s) {
-      if (s === undefined || s === null) return '';
+      if (s === undefined || s === null) return "";
       s = String(s);
       if (s.includes('"')) s = s.replace(/"/g, '""');
-      if (s.includes(',') || s.includes('\n') || s.includes('"')) return `"${s}"`;
+      if (s.includes(",") || s.includes("\n") || s.includes('"')) return `"${s}"`;
       return s;
     }
 
-    // Format a Date object as dd-mm-yy (e.g., 19-11-25)
     function formatDateToDDMMYYFromDate(d) {
-      if (!(d instanceof Date) || isNaN(d.getTime())) return '';
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const yy = String(d.getFullYear() % 100).padStart(2, '0');
+      if (!(d instanceof Date) || isNaN(d.getTime())) return "";
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yy = String(d.getFullYear() % 100).padStart(2, "0");
       return `${dd}-${mm}-${yy}`;
     }
 
-    // Try to interpret various date representations and return dd-mm-yy or original trimmed string if unparseable.
     function formatActivityDate(raw) {
-      if (raw === undefined || raw === null) return '';
+      if (raw === undefined || raw === null) return "";
       const s = String(raw).trim();
-      if (s === '') return '';
-
-      // Numeric Excel serial conversion (common when exporting from spreadsheets)
+      if (s === "") return "";
       if (/^\d+$/.test(s)) {
         const serial = parseInt(s, 10);
-        // sanity check for reasonable Excel serials (e.g., >30 and <60000)
         if (serial > 30 && serial < 60000) {
-          // Excel epoch: 1899-12-31 with the 1900 leap year bug (dates >= 60 are offset by 1)
           const epoch = Date.UTC(1899, 11, 31);
           const offset = serial > 59 ? -1 : 0;
           const ms = epoch + (serial + offset) * 24 * 60 * 60 * 1000;
@@ -125,69 +861,69 @@
           if (formatted) return formatted;
         }
       }
-
-      // Try native Date parsing (ISO and many common formats)
       const parsed = Date.parse(s);
       if (!isNaN(parsed)) {
         return formatDateToDDMMYYFromDate(new Date(parsed));
       }
-
-      // Try common dd/mm/yyyy or dd-mm-yyyy or mm/dd/yyyy patterns and disambiguate heuristically.
       const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
       if (m) {
-        let p1 = parseInt(m[1], 10), p2 = parseInt(m[2], 10), p3 = parseInt(m[3], 10);
+        let p1 = parseInt(m[1], 10),
+          p2 = parseInt(m[2], 10),
+          p3 = parseInt(m[3], 10);
         let day, month, year;
-        if (p3 > 31) { // likely year at end
+        if (p3 > 31) {
           year = p3;
-          // If one of p1/p2 > 12 we can determine which is day
-          if (p1 > 12) { day = p1; month = p2; }
-          else if (p2 > 12) { day = p2; month = p1; }
-          else {
-            // default to dd/mm/yyyy
-            day = p1; month = p2;
+          if (p1 > 12) {
+            day = p1;
+            month = p2;
+          } else if (p2 > 12) {
+            day = p2;
+            month = p1;
+          } else {
+            day = p1;
+            month = p2;
           }
         } else {
-          // two-digit year -> assume 2000+
           year = 2000 + p3;
-          day = p1; month = p2;
+          day = p1;
+          month = p2;
         }
         const d = new Date(year, month - 1, day);
         if (!isNaN(d.getTime())) return formatDateToDDMMYYFromDate(d);
       }
-
-      // fallback: return original trimmed value (so user can inspect unmodified if parsing failed)
       return s;
     }
 
     function processText(text) {
-      if (!text) return '';
+      if (!text) return { csv: "", rowCount: 0 };
 
-      // trim leading BOM, we'll leave it to header handling too
-      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
 
-      // Determine delimiter by examining the first non-empty line
-      const firstNL = text.indexOf('\n');
+      const firstNL = text.indexOf("\n");
       const firstLine = firstNL === -1 ? text : text.slice(0, firstNL);
       const delimiter = detectDelimiter(firstLine);
 
       const rows = parseDelimitedText(text, delimiter);
 
-      // find first non-empty header row
       let headerRowIndex = 0;
-      while (headerRowIndex < rows.length && rows[headerRowIndex].join('').trim() === '') headerRowIndex++;
-      if (headerRowIndex >= rows.length) throw new Error('No header row found.');
+      while (
+        headerRowIndex < rows.length &&
+        rows[headerRowIndex].join("").trim() === ""
+      )
+        headerRowIndex++;
+      if (headerRowIndex >= rows.length)
+        throw new Error("No header row found.");
 
-      let headers = rows[headerRowIndex].map(h => (h || '').trim());
-      // strip BOM if present in first header
-      if (headers.length > 0 && headers[0].charCodeAt(0) === 0xFEFF) {
+      let headers = rows[headerRowIndex].map((h) => (h || "").trim());
+      if (headers.length > 0 && headers[0].charCodeAt(0) === 0xfeff) {
         headers[0] = headers[0].slice(1);
       }
 
-      const idxOf = name => {
+      const idxOf = (name) => {
         let i = headers.indexOf(name);
         if (i !== -1) return i;
         const lower = name.toLowerCase();
-        return headers.findIndex(h => (h || '').toLowerCase() === lower);
+        return headers.findIndex((h) => (h || "").toLowerCase() === lower);
       };
 
       const required = [
@@ -198,41 +934,41 @@
         "Age",
         "PostalCode1",
         "Gender",
-        "RegistrationDocumentNumber"
+        "RegistrationDocumentNumber",
       ];
 
       const indices = {};
       const missing = [];
-      required.forEach(r => {
+      required.forEach((r) => {
         const i = idxOf(r);
         if (i === -1) missing.push(r);
         indices[r] = i;
       });
 
       if (missing.length) {
-        throw new Error('Missing required header(s): ' + missing.join(', '));
+        throw new Error("Missing required header(s): " + missing.join(", "));
       }
 
       const outputLines = [
-        "ActivityDateDisplay,ActivityDisplay,FullName,Age,PostalCode1,Gender,RegistrationDocumentNumber"
+        "activitydatedisplay,activitydisplay,fullname,age,postalcode1,gender,registrationdocumentnumber",
       ];
+
+      let count = 0;
 
       for (let r = headerRowIndex + 1; r < rows.length; r++) {
         const row = rows[r];
-        // skip empty rows
-        if (!row || row.join('').trim() === '') continue;
+        if (!row || row.join("").trim() === "") continue;
 
-        // pad row to headers length
-        while (row.length < headers.length) row.push('');
+        while (row.length < headers.length) row.push("");
 
-        const attendanceVal = (row[indices["Attendance"]] || '').toString().trim();
-        if (attendanceVal === '1') {
-          // ActivityDisplay may contain newlines; we want only first visible line as before
-          const rawADisp = row[indices["ActivityDisplay"]] || '';
-          const adisp = (rawADisp.split(/\r|\n/)[0] || '').trim();
+        const attendanceVal = (row[indices["Attendance"]] || "")
+          .toString()
+          .trim();
+        if (attendanceVal === "1") {
+          const rawADisp = row[indices["ActivityDisplay"]] || "";
+          const adisp = (rawADisp.split(/\r|\n/)[0] || "").trim();
 
-          // Format ActivityDateDisplay as dd-mm-yy
-          const rawDate = row[indices["ActivityDateDisplay"]] || '';
+          const rawDate = row[indices["ActivityDateDisplay"]] || "";
           const formattedDate = formatActivityDate(rawDate);
 
           const outRow = [
@@ -242,19 +978,29 @@
             row[indices["Age"]],
             row[indices["PostalCode1"]],
             row[indices["Gender"]],
-            row[indices["RegistrationDocumentNumber"]]
-          ].map(csvEscape).join(',');
+            row[indices["RegistrationDocumentNumber"]],
+          ]
+            .map(csvEscape)
+            .join(",");
+
           outputLines.push(outRow);
+          count++;
         }
       }
 
-      return outputLines.join("\n");
+      return {
+        csv: outputLines.join("\n"),
+        rowCount: count,
+      };
     }
 
     function downloadCsv() {
-      const blob = new Blob([processedCsv], {type: "text/csv;charset=utf-8"});
+      if (!processedCsv) return;
+      const blob = new Blob([processedCsv], {
+        type: "text/csv;charset=utf-8",
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = "AACFilteredAttendance.csv";
       document.body.appendChild(a);
