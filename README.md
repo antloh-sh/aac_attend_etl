@@ -1,96 +1,48 @@
-# AAC Attendance CSV Processor
+# AAC Attendance ETL Processor (with CFS)
 
-AAC Attendance CSV Processor is a browser-based tool that cleans up the **AAC Activity Attendance** export from IngoTPCC and generates a new CSV file with only attended records, key fields, and a `gui` flag derived from the activity master.
+A lightweight, browser-based tool designed to clean and merge data from the **AAC Activity Attendance** export, the **Activity Master**, and the **Client Progress Report (CPR)**.
 
-Website: https://antloh-sh.github.io/aac_attend_etl/
+## 🚀 Purpose
+This tool automates the process of joining three separate data sources into a single, clean CSV file suitable for importing into systems like Supabase. It specifically filters for actual attendance and maps metadata like `gui` flags and `cfs` scores.
 
-## What it does
+## 🛠 File Upload Sequence
+To ensure the logic executes correctly, files should be uploaded in the following order:
 
-- Reads `AACActivityAttendance.csv` from **IngoTPCC → Report → AAC Activity Attendance**.
-- Reads `AAC_ActivityMaster.xlsx` (activity master with GUI information).
-- Filters attendance data to keep only rows where `Attendance = 1`.
-- Outputs a new CSV with these lowercase fields only:
-  - `activitydatedisplay`
-  - `activitydisplay`
-  - `fullname`
-  - `age`
-  - `postalcode1`
-  - `gender`
-  - `registrationdocumentnumber`
-  - `gui`
-- Truncates `ActivityDisplay` to only the first line (anything after a line break is removed) before matching and output.
-- Attempts to format `ActivityDateDisplay` to `dd-mm-yy` where possible (e.g. `19-11-25`), otherwise retains the original text.
-- Uses `AAC_ActivityMaster.xlsx` to compute `gui`:
-  - If the matching activity’s GUI value starts with `"Yes"` (case-insensitive), then `gui = TRUE`.
-  - Otherwise `gui = FALSE` (including when no matching activity is found).
-- Processes everything client-side in your browser; no data is uploaded to any server.
+1.  **Activity Master (XLSX):** Contains the mapping for the `gui` flag.
+2.  **CPR File (XLSX):** The Client Progress Report containing the `cfs` (Clinical Frailty Scale) scores.
+3.  **Activity Attendance (CSV):** The core attendance data exported from IngoTPCC.
 
-## Matching logic (activity ↔ master)
+## ⚙️ ETL Logic & Transformations
 
-- `activitydisplay` from the attendance CSV is normalised by:
-  - Taking only the first line (split on `\r` / `\n`).
-  - Trimming whitespace.
-  - Converting to lowercase.
-- The same normalisation is applied to the activity name column in `AAC_ActivityMaster.xlsx` (e.g. `ActivityDisplay` / `Activity` / `ActivityName`, detected case-insensitively and with spaces removed in the header name).
-- This normalised text is used as the key to look up the corresponding GUI value in the master.
+### 1. Filtering
+- The tool only processes rows where the **Attendance** column is exactly `1`. All other rows (absentees or placeholders) are discarded.
 
-## Getting started
+### 2. Data Cleaning
+- **Activity Names:** Truncates the `ActivityDisplay` value. It keeps only the first line (e.g., "Yogalates") and discards extra info like time or location ("10:00 AM - Activity Hall").
+- **NRIC/UIN:** Automatically trims whitespace from registration numbers to ensure a perfect match across files.
 
-1. Clone or download this repository.
-2. Either:
-   - Open `index.html` directly in a modern browser (Chrome, Edge, etc.), or
-   - Visit the website: https://antloh-sh.github.io/aac_attend_etl/
-3. Prepare two files from your AAC workflow:
-   - `AACActivityAttendance.csv` exported from IngoTPCC → Report → AAC Activity Attendance.
-   - `AAC_ActivityMaster.xlsx` containing at least:
-     - An activity column (e.g. `ActivityDisplay`, `Activity`, or `ActivityName`).
-     - A `GUI` column where values may start with `"Yes"` for GUI activities.
-4. In the web page:
-   - First upload **`AAC_ActivityMaster.xlsx`** (recommended, for clearer status).
-   - Then upload **`AACActivityAttendance.csv`** via the attendance dropzone.
-5. Wait for the status message to show that processing is done and the row count is updated.
-6. Click **Download processed CSV** to save `AACFilteredAttendance.csv` to your computer.
+### 3. Joining & Mapping
+- **GUI Flag:** Matches the truncated activity name against the Activity Master. If the `GUI` column in the master file starts with "Yes" (case-insensitive), the output is `TRUE`. Otherwise, it is `FALSE`.
+- **CFS Score:** Matches the `RegistrationDocumentNumber` against the `UIN / NRIC` column in the CPR file to pull the `CFS (1-9)` value.
 
-## Input requirements
+### 4. Date Formatting
+- Converts dates from the standard export format (e.g., `19-Nov-2025`) to a standardized `dd-mm-yy` format (e.g., `19-11-25`).
 
-### Attendance CSV (AACActivityAttendance.csv)
+## 📋 Required Headers
 
-The file should contain the standard AAC Activity Attendance report headers, including at least:
+| File | Key Columns Required |
+| :--- | :--- |
+| **Activity Master** | `Activity` (or `ActivityDisplay`), `GUI` |
+| **CPR File** | `UIN / NRIC`, `CFS (1-9)` (Logic skips first 9 rows automatically) |
+| **Attendance CSV** | `ActivityDateDisplay`, `ActivityDisplay`, `FullName`, `Age`, `PostalCode1`, `Gender`, `RegistrationDocumentNumber`, `Attendance` |
 
-- `Attendance`
-- `ActivityDateDisplay`
-- `ActivityDisplay`
-- `FullName`
-- `Age`
-- `PostalCode1`
-- `Gender`
-- `RegistrationDocumentNumber`
+## 📁 Output Format
+The generated CSV will contain the following columns in order:
+`activitydatedisplay`, `activitydisplay`, `fullname`, `age`, `postalcode1`, `gender`, `registrationdocumentnumber`, `gui`, `cfs`
 
-The tool auto-detects the delimiter (comma vs tab) from the first non-empty line and supports CSV or TSV exports.
+## 🔒 Privacy & Security
+- **100% Client-Side:** All processing happens within your browser. No data is uploaded to any server or external database.
+- **No Persistence:** Data is cleared as soon as the browser tab is closed.
 
-If any of the required headers are missing, an error message will appear in the status area and no output file will be generated.
-
-### Activity master (AAC_ActivityMaster.xlsx)
-
-- First worksheet is used.
-- Required columns (case-insensitive, header spaces ignored):
-  - Activity column: one of `ActivityDisplay`, `Activity`, or `ActivityName`.
-  - `GUI` column.
-- GUI interpretation:
-  - If the GUI cell, after trimming and lowercasing, starts with `yes` (e.g. `"Yes"`, `"Yes - GUI"`, `"yes (Y)"`), then `gui = TRUE`.
-  - For all other values or missing matches, `gui = FALSE`.
-
-## Output format
-
-The generated `AACFilteredAttendance.csv` uses this header row: `activitydatedisplay`, `activitydisplay`, `fullname`, `age`, `postalcode1`, `gender`, `registrationdocumentnumber`, `gui`
-
-Each subsequent row:
-
-- Corresponds to a record where `Attendance = 1` in the input CSV.
-- Contains the transformed values described above plus `gui = TRUE/FALSE` derived from the master file.
-
-## Notes
-
-- The page is designed to work fully offline once loaded; all parsing (CSV and XLSX) happens in the browser using JavaScript and the SheetJS `xlsx` library.
-- Large attendance exports or masters may take a short time to parse; the status chip and “Processed rows” counter show progress.
-- If `AAC_ActivityMaster.xlsx` is not loaded, processing still works but all `gui` values will default to `FALSE` and a note will be shown in the status.
+---
+*Developed for Sheng Hong Active Ageing Centre.*
