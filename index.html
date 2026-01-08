@@ -3,63 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activity Data Transformer</title>
+    <title>Data Transformer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        body { background-color: #f4f7f6; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .card { width: 100%; max-width: 450px; border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 2rem; background: white; }
-        .step-num { color: #0d6efd; font-weight: bold; margin-right: 5px; }
-        .form-label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; margin-bottom: 0.5rem; }
-        .btn-primary { padding: 0.75rem; font-weight: 600; border-radius: 8px; margin-top: 1rem; }
+        body { background-color: #f8f9fa; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .card { width: 100%; max-width: 460px; border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); padding: 2.5rem; background: white; }
+        .step-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #6c757d; margin-bottom: 0.5rem; display: block; }
+        .form-control { border-radius: 8px; border: 1px solid #dee2e6; padding: 0.6rem 1rem; margin-bottom: 1.5rem; }
+        .btn-primary { background-color: #0d6efd; border: none; padding: 0.8rem; font-weight: 600; border-radius: 8px; transition: all 0.2s; }
+        .btn-primary:hover { background-color: #0b5ed7; transform: translateY(-1px); }
+        h4 { font-weight: 700; color: #212529; margin-bottom: 2rem; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h4 class="mb-4 text-center">Transform Activity Data</h4>
+    <h4 class="text-center">Activity Data Transformer</h4>
     
-    <div class="mb-3">
-        <label class="form-label"><span class="step-num">1.</span> Activity Master (CSV)</label>
-        <input class="form-control" type="file" id="masterFile" accept=".csv">
-    </div>
+    <label class="step-label">1. Activity Master (XLSX)</label>
+    <input class="form-control" type="file" id="masterFile" accept=".xlsx, .xls">
 
-    <div class="mb-3">
-        <label class="form-label"><span class="step-num">2.</span> CPR File (XLSX / CSV)</label>
-        <input class="form-control" type="file" id="cprFile" accept=".xlsx, .xls, .csv">
-    </div>
+    <label class="step-label">2. CPR File (XLSX)</label>
+    <input class="form-control" type="file" id="cprFile" accept=".xlsx, .xls">
 
-    <div class="mb-3">
-        <label class="form-label"><span class="step-num">3.</span> Activity Attendance (CSV)</label>
-        <input class="form-control" type="file" id="attendanceFile" accept=".csv">
-    </div>
+    <label class="step-label">3. Activity Attendance (CSV)</label>
+    <input class="form-control" type="file" id="attendanceFile" accept=".csv">
 
-    <button class="btn btn-primary w-100" onclick="processData()">Generate CSV Output</button>
+    <button class="btn btn-primary w-100" onclick="processData()">Generate Filtered CSV</button>
 </div>
 
 <script>
-// Standard CSV Parser
+// Parse CSV using PapaParse
 function parseCSV(file) {
     return new Promise((resolve) => {
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (results) => resolve(results.data)
-        });
+        Papa.parse(file, { header: true, skipEmptyLines: true, complete: (results) => resolve(results.data) });
     });
 }
 
-// Excel Parser for CPR File (skips metadata rows)
-function parseCPRExcel(file) {
+// Parse Excel using SheetJS
+function parseExcel(file, skipRows = 0) {
     return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            // {range: 9} skips the first 9 rows (0-8) to reach the headers on row 10
-            const jsonData = XLSX.utils.sheet_to_json(sheet, { range: 9 });
+            const jsonData = XLSX.utils.sheet_to_json(sheet, { range: skipRows });
             resolve(jsonData);
         };
         reader.readAsArrayBuffer(file);
@@ -72,49 +63,66 @@ async function processData() {
     const attendanceFile = document.getElementById('attendanceFile').files[0];
 
     if (!masterFile || !cprFile || !attendanceFile) {
-        alert("Please upload all three files.");
+        alert("Please upload all three files to continue.");
         return;
     }
 
-    const masterData = await parseCSV(masterFile);
-    const attendanceData = await parseCSV(attendanceFile);
-    
-    // Handle CPR as Excel or CSV
-    let cprData;
-    if (cprFile.name.endsWith('.csv')) {
-        // If CSV, we use PapaParse with a manual skip (less common for CPR, but safe)
-        const rawCpr = await parseCSV(cprFile);
-        cprData = rawCpr; 
-    } else {
-        cprData = await parseCPRExcel(cprFile);
+    try {
+        // 1. Load data from files
+        const masterData = await parseExcel(masterFile, 0); // No skip for Master
+        const cprData = await parseExcel(cprFile, 9);      // Skip 9 rows for CPR
+        const attendanceData = await parseCSV(attendanceFile);
+
+        // 2. Create Lookup Maps
+        const masterMap = new Map();
+        masterData.forEach(row => {
+            const act = row['Activity'];
+            const gui = row['GUI'];
+            if (act) {
+                // If GUI starts with 'yes', set to TRUE
+                const isGui = String(gui || '').trim().toLowerCase().startsWith('yes');
+                masterMap.set(String(act).trim(), isGui ? "TRUE" : "FALSE");
+            }
+        });
+
+        const cprMap = new Map();
+        cprData.forEach(row => {
+            const nric = row['UIN / NRIC'];
+            const cfs = row['CFS (1-9)'];
+            if (nric) cprMap.set(String(nric).trim(), String(cfs || '').trim());
+        });
+
+        // 3. Process and Filter Attendance
+        const processed = attendanceData
+            .filter(row => String(row['Attendance']) === "1") // Keep only attended
+            .map(row => {
+                const nric = String(row['RegistrationDocumentNumber'] || '').trim();
+                const rawActivity = row['ActivityDisplay'] || '';
+                // Take only the first line of the activity name
+                const cleanActivity = rawActivity.split('\n')[0].trim();
+
+                return {
+                    activitydatedisplay: row['ActivityDateDisplay'] || '',
+                    activitydisplay: cleanActivity,
+                    fullname: row['FullName'] || '',
+                    age: row['Age'] || '',
+                    postalcode1: row['PostalCode1'] || '',
+                    gender: row['Gender'] || '',
+                    registrationdocumentnumber: nric,
+                    gui: masterMap.get(cleanActivity) || 'FALSE',
+                    cfs: cprMap.get(nric) || ''
+                };
+            });
+
+        if (processed.length === 0) {
+            alert("Processing complete, but 0 rows matched the 'Attendance = 1' filter.");
+        } else {
+            downloadCSV(processed);
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error processing files. Please ensure column names match the samples.");
     }
-
-    // 1. Map Master Data: Activity Name -> GUI
-    const masterMap = new Map(masterData.map(row => [row.activitydisplay, row.gui]));
-
-    // 2. Map CPR Data: UIN/NRIC -> CFS (1-9)
-    // The CPR headers are specifically "UIN / NRIC" and "CFS (1-9)"
-    const cprMap = new Map(cprData.map(row => [row["UIN / NRIC"], row["CFS (1-9)"]]));
-
-    // 3. Process Attendance and Join
-    const output = attendanceData.map(row => {
-        const nric = row.registrationdocumentnumber;
-        const activityName = row.activitydisplay;
-
-        return {
-            activitydatedisplay: row.activitydatedisplay,
-            activitydisplay: activityName,
-            fullname: row.fullname || '',
-            age: row.age || '',
-            postalcode1: row.postalcode1 || '',
-            gender: row.gender || '',
-            registrationdocumentnumber: nric,
-            gui: masterMap.get(activityName) || '', 
-            cfs: cprMap.get(nric) || ''              
-        };
-    });
-
-    downloadCSV(output);
 }
 
 function downloadCSV(data) {
@@ -122,8 +130,8 @@ function downloadCSV(data) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `transformed_activities_${new Date().toISOString().slice(0,10)}.csv`);
+    link.href = url;
+    link.setAttribute("download", `AAC_Transformed_Data_${new Date().toISOString().slice(0,10)}.csv`);
     link.click();
 }
 </script>
