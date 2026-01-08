@@ -1,48 +1,53 @@
-# AAC Attendance ETL Processor (with CFS)
+# AAC Attendance ETL (Supabase Version)
 
-A lightweight, browser-based tool designed to clean and merge data from the **AAC Activity Attendance** export, the **Activity Master**, and the **Client Progress Report (CPR)**.
+This tool processes activity attendance data by merging three distinct sources into a single, clean CSV file optimized for direct import into **Supabase (PostgreSQL)**.
 
-## 🚀 Purpose
-This tool automates the process of joining three separate data sources into a single, clean CSV file suitable for importing into systems like Supabase. It specifically filters for actual attendance and maps metadata like `gui` flags and `cfs` scores.
+## 🚀 Key Features
 
-## 🛠 File Upload Sequence
-To ensure the logic executes correctly, files should be uploaded in the following order:
+- **Date Standardisation:** Converts `DD-Mon-YYYY` (e.g., 19-Nov-2025) to `YYYY-MM-DD` for native Supabase **DATE** fields.
+- **Native Boolean Mapping:** Maps the Activity Master's GUI status to raw `true` or `false` values for Supabase **BOOL** fields.
+- **CFS Integration:** Joins the Client Progress Report (CPR) data using the NRIC as a unique key.
+- **Dynamic Naming:** Automatically generates filenames based on the data month, e.g., `etl_activity_oct2025.csv`.
 
-1.  **Activity Master (XLSX):** Contains the mapping for the `gui` flag.
-2.  **CPR File (XLSX):** The Client Progress Report containing the `cfs` (Clinical Frailty Scale) scores.
-3.  **Activity Attendance (CSV):** The core attendance data exported from IngoTPCC.
+## 📁 Required Data Sources
 
-## ⚙️ ETL Logic & Transformations
+The tool expects three files to be uploaded in this order:
 
-### 1. Filtering
-- The tool only processes rows where the **Attendance** column is exactly `1`. All other rows (absentees or placeholders) are discarded.
+1.  **Activity Master (.xlsx):**
+    - Looks for an `Activity` column and a `GUI` column.
+    - If `GUI` starts with "Yes", the output row is marked `true`.
+2.  **CPR File (.xlsx):**
+    - Standard Client Progress Report export.
+    - The tool automatically skips the first 9 metadata rows to find the headers.
+    - Maps `UIN / NRIC` to the `CFS (1-9)` value.
+3.  **Activity Attendance (.csv):**
+    - The raw export from IngoTPCC.
+    - **Filter Logic:** Only rows where the `Attendance` column equals `1` are processed.
 
-### 2. Data Cleaning
-- **Activity Names:** Truncates the `ActivityDisplay` value. It keeps only the first line (e.g., "Yogalates") and discards extra info like time or location ("10:00 AM - Activity Hall").
-- **NRIC/UIN:** Automatically trims whitespace from registration numbers to ensure a perfect match across files.
+## 🛠 Database Schema Mapping
 
-### 3. Joining & Mapping
-- **GUI Flag:** Matches the truncated activity name against the Activity Master. If the `GUI` column in the master file starts with "Yes" (case-insensitive), the output is `TRUE`. Otherwise, it is `FALSE`.
-- **CFS Score:** Matches the `RegistrationDocumentNumber` against the `UIN / NRIC` column in the CPR file to pull the `CFS (1-9)` value.
+The output CSV headers are lowercase and mapped to the following Supabase types:
 
-### 4. Date Formatting
-- Converts dates from the standard export format (e.g., `19-Nov-2025`) to a standardized `dd-mm-yy` format (e.g., `19-11-25`).
+| CSV Header | Supabase Type | Transformation Logic |
+| :--- | :--- | :--- |
+| `activitydatedisplay` | **DATE** | `19-Nov-2025` → `2025-11-19` |
+| `activitydisplay` | **TEXT** | Truncated to the first line (removes time/location). |
+| `fullname` | **TEXT** | Original text. |
+| `age` | **INT2** | Original number. |
+| `postalcode1` | **TEXT** | Original text. |
+| `gender` | **TEXT** | Original text. |
+| `registrationdocumentnumber` | **TEXT** | Cleaned NRIC (Primary Key). |
+| `gui` | **BOOLEAN** | "Yes..." → `true`, else → `false`. |
+| `cfs` | **TEXT** | CFS score from CPR file. |
 
-## 📋 Required Headers
+## 📦 Output Filename
 
-| File | Key Columns Required |
-| :--- | :--- |
-| **Activity Master** | `Activity` (or `ActivityDisplay`), `GUI` |
-| **CPR File** | `UIN / NRIC`, `CFS (1-9)` (Logic skips first 9 rows automatically) |
-| **Attendance CSV** | `ActivityDateDisplay`, `ActivityDisplay`, `FullName`, `Age`, `PostalCode1`, `Gender`, `RegistrationDocumentNumber`, `Attendance` |
+The output file follows the format:
+`etl_activity_<month><year>.csv` (e.g., `etl_activity_oct2025.csv`).
 
-## 📁 Output Format
-The generated CSV will contain the following columns in order:
-`activitydatedisplay`, `activitydisplay`, `fullname`, `age`, `postalcode1`, `gender`, `registrationdocumentnumber`, `gui`, `cfs`
+## 🔒 Security
 
-## 🔒 Privacy & Security
-- **100% Client-Side:** All processing happens within your browser. No data is uploaded to any server or external database.
-- **No Persistence:** Data is cleared as soon as the browser tab is closed.
+All processing is performed locally in your browser. **No data is uploaded to a server.** The tool uses the `SheetJS` and `PapaParse` libraries to handle data entirely within your computer's memory.
 
 ---
-*Developed for Sheng Hong Active Ageing Centre.*
+*Created for the Sheng Hong Active Ageing Centre Data Workflow.*
