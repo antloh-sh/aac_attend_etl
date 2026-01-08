@@ -2,26 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Attendance ETL - Supabase Native</title>
+  <title>Attendance ETL - Supabase Ready</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   <style>
-    body { background: #f8fafc; color: #334155; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); width: 100%; max-width: 400px; border: 1px solid #e2e8f0; }
-    h2 { margin-top: 0; font-size: 1.2rem; text-align: center; margin-bottom: 2rem; color: #0f172a; }
+    body { background: #f9fafb; color: #1f2937; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 400px; border: 1px solid #e5e7eb; }
+    h2 { margin-top: 0; font-size: 1.25rem; text-align: center; margin-bottom: 2rem; color: #111827; font-weight: 700; }
     .group { margin-bottom: 1.5rem; }
-    label { display: block; margin-bottom: 0.5rem; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
-    input { width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; }
-    .btn { width: 100%; padding: 0.8rem; background: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
-    .btn:hover { background: #2563eb; }
-    .status { margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: #94a3b8; }
+    label { display: block; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+    input { width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 0.9rem; }
+    .btn { width: 100%; padding: 0.8rem; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: background 0.2s; }
+    .btn:hover { background: #1d4ed8; }
+    .status { margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: #9ca3af; font-weight: 500; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>Supabase Data Transformer</h2>
+  <h2>Data Transformer</h2>
   
   <div class="group">
     <label>1. Activity Master (XLSX)</label>
@@ -38,22 +38,28 @@
     <input type="file" id="attendanceFile" accept=".csv">
   </div>
 
-  <button class="btn" onclick="process()">Generate CSV for Supabase</button>
-  <div id="status" class="status">Ready</div>
+  <button class="btn" onclick="process()">Generate Supabase CSV</button>
+  <div id="status" class="status">Waiting for files...</div>
 </div>
 
 <script>
-  // UPDATED: Formats "19-Nov-2025" to "2025-11-19" for Supabase DATE type
+  // Helper to get Month/Year for filename
+  function getFileTimestamp(dateStr) {
+    if (!dateStr) return "output";
+    const parts = dateStr.split('-'); // Expected: DD-Mon-YYYY
+    if (parts.length < 3) return "output";
+    return (parts[1] + parts[2]).toLowerCase(); // e.g., jan2026
+  }
+
+  // UPDATED: Formats to YYYY-MM-DD for Supabase DATE field
   function formatToISODate(str) {
     if (!str) return "";
     const match = str.match(/^(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})/i);
     if (!match) return str;
-    
     const day = match[1].padStart(2, "0");
     const monthStr = match[2].toLowerCase();
     const year = match[3];
     const months = { jan:"01", feb:"02", mar:"03", apr:"04", may:"05", jun:"06", jul:"07", aug:"08", sep:"09", oct:"10", nov:"11", dec:"12" };
-    
     return `${year}-${months[monthStr]}-${day}`;
   }
 
@@ -74,43 +80,47 @@
     const cFile = document.getElementById('cprFile').files[0];
     const aFile = document.getElementById('attendanceFile').files[0];
 
-    if (!mFile || !cFile || !aFile) return alert("Select all files");
+    if (!mFile || !cFile || !aFile) return alert("Please select all 3 files.");
     document.getElementById('status').innerText = "Processing...";
 
     const masterData = await parseExcel(mFile, 0);
     const cprData = await parseExcel(cFile, 9);
     const attendanceData = await parseCSV(aFile);
 
+    // Build Master Map (Boolean GUI)
     const masterMap = new Map();
     masterData.forEach(r => {
       const act = r.Activity || r.ActivityDisplay;
       if (act) {
-        // UPDATED: Stores as boolean true/false instead of string "TRUE"
-        const isGui = String(r.GUI || '').toLowerCase().startsWith('yes');
-        masterMap.set(act.trim(), isGui); 
+        const isGui = String(r.GUI || '').trim().toLowerCase().startsWith('yes');
+        masterMap.set(act.trim(), isGui);
       }
     });
 
+    // Build CPR Map
     const cprMap = new Map();
     cprData.forEach(r => {
       if (r["UIN / NRIC"]) cprMap.set(String(r["UIN / NRIC"]).trim(), r["CFS (1-9)"] || "");
     });
 
+    let firstDateRaw = "";
+
     const results = attendanceData
       .filter(row => String(row.Attendance) === "1")
-      .map(row => {
+      .map((row, index) => {
+        if (index === 0) firstDateRaw = row.ActivityDateDisplay;
         const cleanAct = (row.ActivityDisplay || "").split('\n')[0].trim();
         const nric = (row.RegistrationDocumentNumber || "").trim();
 
         return {
-          activitydatedisplay: formatToISODate(row.ActivityDateDisplay), // YYYY-MM-DD
+          activitydatedisplay: formatToISODate(row.ActivityDateDisplay),
           activitydisplay: cleanAct,
           fullname: row.FullName || "",
           age: row.Age || "",
           postalcode1: row.PostalCode1 || "",
           gender: row.Gender || "",
           registrationdocumentnumber: nric,
-          gui: masterMap.has(cleanAct) ? masterMap.get(cleanAct) : false, // boolean true/false
+          gui: masterMap.has(cleanAct) ? masterMap.get(cleanAct) : false, // Native Boolean
           cfs: cprMap.get(nric) || ""
         };
       });
@@ -118,10 +128,14 @@
     const csv = Papa.unparse(results);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement("a");
+    
+    // Dynamic Naming Logic
+    const fileTs = getFileTimestamp(firstDateRaw);
     link.href = URL.createObjectURL(blob);
-    link.download = `supabase_ready_${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = `etl_activity_${fileTs}.csv`;
+    
     link.click();
-    document.getElementById('status').innerText = "Download Complete";
+    document.getElementById('status').innerText = `Success: ${results.length} rows exported.`;
   }
 </script>
 </body>
