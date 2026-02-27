@@ -51,7 +51,7 @@
     return (parts[1] + parts[2]).toLowerCase(); // e.g., jan2026
   }
 
-  // UPDATED: Formats to YYYY-MM-DD for Supabase DATE field
+  // Formats to YYYY-MM-DD for Supabase DATE field
   function formatToISODate(str) {
     if (!str) return "";
     const match = str.match(/^(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})/i);
@@ -87,13 +87,15 @@
     const cprData = await parseExcel(cFile, 9);
     const attendanceData = await parseCSV(aFile);
 
-    // Build Master Map (Boolean GUI)
+    // Build Master Map: stores { gui: bool, aap: bool } per activity
+    // AAP filter: only "yes..." is true — "No", blank, missing all excluded
     const masterMap = new Map();
     masterData.forEach(r => {
       const act = r.Activity || r.ActivityDisplay;
       if (act) {
         const isGui = String(r.GUI || '').trim().toLowerCase().startsWith('yes');
-        masterMap.set(act.trim(), isGui);
+        const isAap  = String(r.AAP  || '').trim().toLowerCase().startsWith('yes');
+        masterMap.set(act.trim(), { gui: isGui, aap: isAap });
       }
     });
 
@@ -106,11 +108,19 @@
     let firstDateRaw = "";
 
     const results = attendanceData
-      .filter(row => String(row.Attendance) === "1")
+      .filter(row => {
+        // Must be attended
+        if (String(row.Attendance) !== "1") return false;
+        // Activity must exist in master and have AAP = Yes
+        const cleanAct = (row.ActivityDisplay || "").split('\n')[0].trim();
+        const master = masterMap.get(cleanAct);
+        return master !== undefined && master.aap === true;
+      })
       .map((row, index) => {
         if (index === 0) firstDateRaw = row.ActivityDateDisplay;
         const cleanAct = (row.ActivityDisplay || "").split('\n')[0].trim();
         const nric = (row.RegistrationDocumentNumber || "").trim();
+        const master = masterMap.get(cleanAct);
 
         return {
           activitydatedisplay: formatToISODate(row.ActivityDateDisplay),
@@ -120,7 +130,7 @@
           postalcode1: row.PostalCode1 || "",
           gender: row.Gender || "",
           registrationdocumentnumber: nric,
-          gui: masterMap.has(cleanAct) ? masterMap.get(cleanAct) : false, // Native Boolean
+          gui: master ? master.gui : false, // Native Boolean
           cfs: cprMap.get(nric) || ""
         };
       });
