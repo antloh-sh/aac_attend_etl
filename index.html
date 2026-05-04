@@ -8,11 +8,23 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   <style>
     body { background: #f9fafb; color: #1f2937; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 400px; border: 1px solid #e5e7eb; }
+    .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 450px; border: 1px solid #e5e7eb; }
     h2 { margin-top: 0; font-size: 1.25rem; text-align: center; margin-bottom: 2rem; color: #111827; font-weight: 700; }
     .group { margin-bottom: 1.5rem; }
     label { display: block; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-    input { width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 0.9rem; }
+    
+    /* File Input UI Styling */
+    .file-input-wrapper { position: relative; width: 100%; }
+    input[type="file"] { 
+      width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 6px; 
+      box-sizing: border-box; font-size: 0.9rem; color: transparent; position: relative; z-index: 2; background: transparent;
+    }
+    input[type="file"].has-file { color: #1f2937; }
+    .file-placeholder { 
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%); 
+      color: #9ca3af; font-size: 0.85rem; pointer-events: none; z-index: 1; 
+    }
+
     .btn { width: 100%; padding: 0.8rem; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: background 0.2s; }
     .btn:hover { background: #1d4ed8; }
     .status { margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: #9ca3af; font-weight: 500; }
@@ -25,17 +37,26 @@
   
   <div class="group">
     <label>1. Activity Master (XLSX)</label>
-    <input type="file" id="masterFile" accept=".xlsx">
+    <div class="file-input-wrapper">
+      <input type="file" id="masterFile" accept=".xlsx" onchange="updateUI(this)">
+      <span class="file-placeholder">Example: AAC_ActivityMaster.xlsx</span>
+    </div>
   </div>
 
   <div class="group">
     <label>2. CPR File (XLSX)</label>
-    <input type="file" id="cprFile" accept=".xlsx">
+    <div class="file-input-wrapper">
+      <input type="file" id="cprFile" accept=".xlsx" onchange="updateUI(this)">
+      <span class="file-placeholder">Example: CPR2026000010.xlsx</span>
+    </div>
   </div>
 
   <div class="group">
     <label>3. Attendance (CSV)</label>
-    <input type="file" id="attendanceFile" accept=".csv">
+    <div class="file-input-wrapper">
+      <input type="file" id="attendanceFile" accept=".csv" onchange="updateUI(this)">
+      <span class="file-placeholder">Example: AACActivityAttendance.csv</span>
+    </div>
   </div>
 
   <button class="btn" onclick="process()">Generate Supabase CSV</button>
@@ -43,15 +64,27 @@
 </div>
 
 <script>
+  // UI Helper for file inputs
+  function updateUI(input) {
+    const placeholder = input.nextElementSibling;
+    if (input.files.length > 0) {
+      placeholder.style.display = 'none';
+      input.classList.add('has-file');
+    } else {
+      placeholder.style.display = 'block';
+      input.classList.remove('has-file');
+    }
+  }
+
   // Helper to get Month/Year for filename
   function getFileTimestamp(dateStr) {
     if (!dateStr) return "output";
-    const parts = dateStr.split('-'); // Expected: DD-Mon-YYYY
+    const parts = dateStr.split('-'); 
     if (parts.length < 3) return "output";
-    return (parts[1] + parts[2]).toLowerCase(); // e.g., jan2026
+    return (parts[1] + parts[2]).toLowerCase().replace(/ .*/,''); // e.g., apr2026
   }
 
-  // Formats to YYYY-MM-DD for Supabase DATE field
+  // Formats to YYYY-MM-DD for Supabase
   function formatToISODate(str) {
     if (!str) return "";
     const match = str.match(/^(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})/i);
@@ -69,6 +102,16 @@
     return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { range: skipRows });
   }
 
+  // Specifically detects the CPR header "UIN / NRIC"
+  async function parseCPRWithAutoHeader(file) {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data);
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    const headerIndex = rows.findIndex(row => Array.isArray(row) && row.includes("UIN / NRIC"));
+    return XLSX.utils.sheet_to_json(sheet, { range: headerIndex !== -1 ? headerIndex : 9 });
+  }
+
   function parseCSV(file) {
     return new Promise(res => {
       Papa.parse(file, { header: true, skipEmptyLines: true, complete: out => res(out.data) });
@@ -84,11 +127,10 @@
     document.getElementById('status').innerText = "Processing...";
 
     const masterData = await parseExcel(mFile, 0);
-    const cprData = await parseExcel(cFile, 9);
+    const cprData = await parseCPRWithAutoHeader(cFile);
     const attendanceData = await parseCSV(aFile);
 
-    // Build Master Map: stores { gui: bool, aap: bool } per activity
-    // AAP filter: only "yes..." is true — "No", blank, missing all excluded
+    // Build Master Map
     const masterMap = new Map();
     masterData.forEach(r => {
       const act = r.Activity || r.ActivityDisplay;
@@ -99,19 +141,18 @@
       }
     });
 
-    // Build CPR Map
+    // Build CPR Map (Using Normalized NRIC)
     const cprMap = new Map();
     cprData.forEach(r => {
-      if (r["UIN / NRIC"]) cprMap.set(String(r["UIN / NRIC"]).trim(), r["CFS (1-9)"] || "");
+      const nric = String(r["UIN / NRIC"] || "").trim().toUpperCase();
+      if (nric) cprMap.set(nric, r["CFS (1-9)"] || "");
     });
 
     let firstDateRaw = "";
 
     const results = attendanceData
       .filter(row => {
-        // Must be attended
         if (String(row.Attendance) !== "1") return false;
-        // Activity must exist in master and have AAP = Yes
         const cleanAct = (row.ActivityDisplay || "").split('\n')[0].trim();
         const master = masterMap.get(cleanAct);
         return master !== undefined && master.aap === true;
@@ -119,7 +160,7 @@
       .map((row, index) => {
         if (index === 0) firstDateRaw = row.ActivityDateDisplay;
         const cleanAct = (row.ActivityDisplay || "").split('\n')[0].trim();
-        const nric = (row.RegistrationDocumentNumber || "").trim();
+        const nric = (row.RegistrationDocumentNumber || "").trim().toUpperCase();
         const master = masterMap.get(cleanAct);
 
         return {
@@ -127,10 +168,10 @@
           activitydisplay: cleanAct,
           fullname: row.FullName || "",
           age: row.Age || "",
-          postalcode1: row.PostalCode1 || "",
+          postalcode1: row.PostalCode || "", // Fixed based on actual CSV header
           gender: row.Gender || "",
           registrationdocumentnumber: nric,
-          gui: master ? master.gui : false, // Native Boolean
+          gui: master ? master.gui : false,
           cfs: cprMap.get(nric) || ""
         };
       });
@@ -139,7 +180,6 @@
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement("a");
     
-    // Dynamic Naming Logic
     const fileTs = getFileTimestamp(firstDateRaw);
     link.href = URL.createObjectURL(blob);
     link.download = `etl_activity_${fileTs}.csv`;
