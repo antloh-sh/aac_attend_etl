@@ -7,31 +7,36 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   <style>
-    body { background: #f9fafb; color: #1f2937; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 480px; border: 1px solid #e5e7eb; }
+    body { background: #f9fafb; color: #1f2937; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 500px; border: 1px solid #e5e7eb; }
     h2 { margin-top: 0; font-size: 1.25rem; text-align: center; margin-bottom: 2rem; color: #111827; font-weight: 700; }
+    
     .group { margin-bottom: 1.5rem; }
-    label { display: block; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+    label { display: block; margin-bottom: 0.6rem; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
     
-    /* File Input Wrapper with Padding-based Button Offset */
-    .file-input-wrapper { position: relative; width: 100%; }
-    input[type="file"] { 
-      width: 100%; padding: 0.5rem; padding-left: 110px; border: 1px solid #d1d5db; border-radius: 6px; 
-      box-sizing: border-box; font-size: 0.85rem; position: relative; z-index: 2; background: transparent;
-      cursor: pointer;
-    }
+    /* The New Layout: Button and Text Box side-by-side */
+    .input-row { display: flex; gap: 10px; align-items: center; }
     
-    /* Hide 'No file chosen' until file is uploaded */
-    input[type="file"]:not(.has-file) { color: transparent; }
-    input[type="file"].has-file { color: #1f2937; padding-left: 0.5rem; }
+    /* Hidden native input */
+    input[type="file"] { display: none; }
 
-    .file-placeholder { 
-      position: absolute; left: 110px; top: 50%; transform: translateY(-50%); 
-      color: #9ca3af; font-size: 0.85rem; pointer-events: none; z-index: 1; 
+    /* Custom Pick Button */
+    .pick-btn {
+      background: #f3f4f6; border: 1px solid #d1d5db; padding: 8px 12px; border-radius: 6px;
+      font-size: 0.8rem; font-weight: 600; color: #374151; cursor: pointer; white-space: nowrap;
+      transition: background 0.2s;
     }
+    .pick-btn:hover { background: #e5e7eb; }
 
-    .btn { width: 100%; padding: 0.8rem; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: background 0.2s; margin-top: 10px; }
-    .btn:hover { background: #1d4ed8; }
+    /* Filename Display Box */
+    .filename-box {
+      flex-grow: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;
+      font-size: 0.85rem; color: #9ca3af; background: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .filename-box.has-file { color: #1f2937; border-color: #2563eb; background: #eff6ff; }
+
+    .btn-main { width: 100%; padding: 0.9rem; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: background 0.2s; margin-top: 15px; }
+    .btn-main:hover { background: #1d4ed8; }
     .status { margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: #9ca3af; font-weight: 500; }
   </style>
 </head>
@@ -40,55 +45,56 @@
 <div class="card">
   <h2>Data Transformer</h2>
   
+  <!-- Step 1 -->
   <div class="group">
     <label>1. Activity Master (XLSX)</label>
-    <div class="file-input-wrapper">
-      <input type="file" id="masterFile" accept=".xlsx" onchange="updateUI(this)">
-      <span class="file-placeholder">AAC_ActivityMaster_2.xlsx</span>
+    <div class="input-row">
+      <button class="pick-btn" onclick="document.getElementById('masterFile').click()">Choose File</button>
+      <div id="masterName" class="filename-box">AAC_ActivityMaster_2.xlsx</div>
+      <input type="file" id="masterFile" accept=".xlsx" onchange="updateUI(this, 'masterName')">
     </div>
   </div>
 
+  <!-- Step 2 -->
   <div class="group">
     <label>2. CPR File (XLSX)</label>
-    <div class="file-input-wrapper">
-      <input type="file" id="cprFile" accept=".xlsx" onchange="updateUI(this)">
-      <span class="file-placeholder">CPR2026000010_2.xlsx</span>
+    <div class="input-row">
+      <button class="pick-btn" onclick="document.getElementById('cprFile').click()">Choose File</button>
+      <div id="cprName" class="filename-box">CPR2026000010_2.xlsx</div>
+      <input type="file" id="cprFile" accept=".xlsx" onchange="updateUI(this, 'cprName')">
     </div>
   </div>
 
+  <!-- Step 3 -->
   <div class="group">
     <label>3. Attendance (CSV)</label>
-    <div class="file-input-wrapper">
-      <input type="file" id="attendanceFile" accept=".csv" onchange="updateUI(this)">
-      <span class="file-placeholder">AACActivityAttendance_2.csv</span>
+    <div class="input-row">
+      <button class="pick-btn" onclick="document.getElementById('attendanceFile').click()">Choose File</button>
+      <div id="attendanceName" class="filename-box">AACActivityAttendance_2.csv</div>
+      <input type="file" id="attendanceFile" accept=".csv" onchange="updateUI(this, 'attendanceName')">
     </div>
   </div>
 
-  <button class="btn" onclick="process()">Generate Supabase CSV</button>
+  <button class="btn-main" onclick="process()">Generate Supabase CSV</button>
   <div id="status" class="status">Waiting for files...</div>
 </div>
 
 <script>
-  // UI Helper: Switches from Ghost Filename to Real Filename
-  function updateUI(input) {
-    const placeholder = input.nextElementSibling;
+  // UI: Updates the custom text box instead of the native input
+  function updateUI(input, displayId) {
+    const display = document.getElementById(displayId);
     if (input.files.length > 0) {
-      placeholder.style.display = 'none';
-      input.classList.add('has-file');
-    } else {
-      placeholder.style.display = 'block';
-      input.classList.remove('has-file');
+      display.innerText = input.files[0].name;
+      display.classList.add('has-file');
     }
   }
 
-  // Filename timestamp logic
   function getFileTimestamp(dateStr) {
     if (!dateStr) return "output";
     const parts = dateStr.split('-'); 
     return (parts[1] + parts[2]).toLowerCase().replace(/ .*/,'');
   }
 
-  // Format to YYYY-MM-DD
   function formatToISODate(str) {
     if (!str) return "";
     const match = str.match(/^(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})/i);
@@ -97,20 +103,18 @@
     return `${match[3]}-${months[match[2].toLowerCase()]}-${match[1].padStart(2, "0")}`;
   }
 
-  // Excel Parser for simple static files
   async function parseExcel(file, skipRows = 0) {
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data);
     return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { range: skipRows });
   }
 
-  // Dynamic Header Detector for CPR file
   async function parseCPRWithAutoHeader(file) {
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data);
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-    // Look for the "UIN / NRIC" header to start parsing[cite: 1]
+    // Dynamically find where the data starts based on NRIC column
     const headerIndex = rows.findIndex(row => Array.isArray(row) && row.includes("UIN / NRIC"));
     return XLSX.utils.sheet_to_json(sheet, { range: headerIndex !== -1 ? headerIndex : 9 });
   }
@@ -133,7 +137,6 @@
     const cprData = await parseCPRWithAutoHeader(cFile);
     const attendanceData = await parseCSV(aFile);
 
-    // Build Master Map for AAP Filtering[cite: 1]
     const masterMap = new Map();
     masterData.forEach(r => {
       const act = r.Activity || r.ActivityDisplay;
@@ -144,7 +147,6 @@
       }
     });
 
-    // Build CPR Map (Using Normalized NRIC for Matching)[cite: 1]
     const cprMap = new Map();
     cprData.forEach(r => {
       const nric = String(r["UIN / NRIC"] || "").trim().toUpperCase();
@@ -155,11 +157,10 @@
 
     const results = attendanceData
       .filter(row => {
-        // Attendance must be 1 and Activity must pass AAP check[cite: 1, 2]
         if (String(row.Attendance) !== "1") return false;
         const cleanAct = (row.ActivityDisplay || "").split('\n')[0].trim();
         const master = masterMap.get(cleanAct);
-        return master !== undefined && master.aap === true;
+        return master !== undefined && master.aap === true; // Strict AAP filter[cite: 1]
       })
       .map((row, index) => {
         if (index === 0) firstDateRaw = row.ActivityDateDisplay;
@@ -172,15 +173,14 @@
           activitydisplay: cleanAct,
           fullname: row.FullName || "",
           age: row.Age || "",
-          postalcode1: row.PostalCode || "", // Maps to Attendance CSV 'PostalCode'[cite: 2]
+          postalcode1: row.PostalCode || "",
           gender: row.Gender || "",
           registrationdocumentnumber: nric,
           gui: master ? master.gui : false,
-          cfs: cprMap.get(nric) || "" // CFS integration[cite: 1]
+          cfs: cprMap.get(nric) || "" // CFS mapped from CPR file
         };
       });
 
-    // Generate CSV and Download
     const csv = Papa.unparse(results);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement("a");
