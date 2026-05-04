@@ -8,20 +8,21 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   <style>
     body { background: #f9fafb; color: #1f2937; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 450px; border: 1px solid #e5e7eb; }
+    .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 480px; border: 1px solid #e5e7eb; }
     h2 { margin-top: 0; font-size: 1.25rem; text-align: center; margin-bottom: 2rem; color: #111827; font-weight: 700; }
     .group { margin-bottom: 1.5rem; }
     label { display: block; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
     
+    /* File Input Wrapper with Padding-based Button Offset */
     .file-input-wrapper { position: relative; width: 100%; }
     input[type="file"] { 
       width: 100%; padding: 0.5rem; padding-left: 110px; border: 1px solid #d1d5db; border-radius: 6px; 
-      box-sizing: border-box; font-size: 0.9rem; position: relative; z-index: 2; background: transparent;
+      box-sizing: border-box; font-size: 0.85rem; position: relative; z-index: 2; background: transparent;
+      cursor: pointer;
     }
     
-    /* Hide native 'No file chosen' text while placeholder is active */
+    /* Hide 'No file chosen' until file is uploaded */
     input[type="file"]:not(.has-file) { color: transparent; }
-    /* Reset layout once a file is selected */
     input[type="file"].has-file { color: #1f2937; padding-left: 0.5rem; }
 
     .file-placeholder { 
@@ -43,7 +44,7 @@
     <label>1. Activity Master (XLSX)</label>
     <div class="file-input-wrapper">
       <input type="file" id="masterFile" accept=".xlsx" onchange="updateUI(this)">
-      <span class="file-placeholder">AAC_ActivityMaster.xlsx</span>
+      <span class="file-placeholder">AAC_ActivityMaster_2.xlsx</span>
     </div>
   </div>
 
@@ -51,7 +52,7 @@
     <label>2. CPR File (XLSX)</label>
     <div class="file-input-wrapper">
       <input type="file" id="cprFile" accept=".xlsx" onchange="updateUI(this)">
-      <span class="file-placeholder">CPR2026000001.xlsx</span>
+      <span class="file-placeholder">CPR2026000010_2.xlsx</span>
     </div>
   </div>
 
@@ -59,7 +60,7 @@
     <label>3. Attendance (CSV)</label>
     <div class="file-input-wrapper">
       <input type="file" id="attendanceFile" accept=".csv" onchange="updateUI(this)">
-      <span class="file-placeholder">AACActivityAttendance.csv</span>
+      <span class="file-placeholder">AACActivityAttendance_2.csv</span>
     </div>
   </div>
 
@@ -68,7 +69,7 @@
 </div>
 
 <script>
-  // UI logic to clear the ghost filename and reset padding
+  // UI Helper: Switches from Ghost Filename to Real Filename
   function updateUI(input) {
     const placeholder = input.nextElementSibling;
     if (input.files.length > 0) {
@@ -80,8 +81,115 @@
     }
   }
 
-  // Date parsing and CSV generation logic follows below...
-  // [Remainder of process() and helper functions from previous step]
+  // Filename timestamp logic
+  function getFileTimestamp(dateStr) {
+    if (!dateStr) return "output";
+    const parts = dateStr.split('-'); 
+    return (parts[1] + parts[2]).toLowerCase().replace(/ .*/,'');
+  }
+
+  // Format to YYYY-MM-DD
+  function formatToISODate(str) {
+    if (!str) return "";
+    const match = str.match(/^(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})/i);
+    if (!match) return str;
+    const months = { jan:"01", feb:"02", mar:"03", apr:"04", may:"05", jun:"06", jul:"07", aug:"08", sep:"09", oct:"10", nov:"11", dec:"12" };
+    return `${match[3]}-${months[match[2].toLowerCase()]}-${match[1].padStart(2, "0")}`;
+  }
+
+  // Excel Parser for simple static files
+  async function parseExcel(file, skipRows = 0) {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data);
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { range: skipRows });
+  }
+
+  // Dynamic Header Detector for CPR file
+  async function parseCPRWithAutoHeader(file) {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data);
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    // Look for the "UIN / NRIC" header to start parsing[cite: 1]
+    const headerIndex = rows.findIndex(row => Array.isArray(row) && row.includes("UIN / NRIC"));
+    return XLSX.utils.sheet_to_json(sheet, { range: headerIndex !== -1 ? headerIndex : 9 });
+  }
+
+  function parseCSV(file) {
+    return new Promise(res => {
+      Papa.parse(file, { header: true, skipEmptyLines: true, complete: out => res(out.data) });
+    });
+  }
+
+  async function process() {
+    const mFile = document.getElementById('masterFile').files[0];
+    const cFile = document.getElementById('cprFile').files[0];
+    const aFile = document.getElementById('attendanceFile').files[0];
+
+    if (!mFile || !cFile || !aFile) return alert("Please select all 3 files.");
+    document.getElementById('status').innerText = "Processing...";
+
+    const masterData = await parseExcel(mFile, 0);
+    const cprData = await parseCPRWithAutoHeader(cFile);
+    const attendanceData = await parseCSV(aFile);
+
+    // Build Master Map for AAP Filtering[cite: 1]
+    const masterMap = new Map();
+    masterData.forEach(r => {
+      const act = r.Activity || r.ActivityDisplay;
+      if (act) {
+        const isGui = String(r.GUI || '').trim().toLowerCase().startsWith('yes');
+        const isAap  = String(r.AAP  || '').trim().toLowerCase().startsWith('yes');
+        masterMap.set(act.trim(), { gui: isGui, aap: isAap });
+      }
+    });
+
+    // Build CPR Map (Using Normalized NRIC for Matching)[cite: 1]
+    const cprMap = new Map();
+    cprData.forEach(r => {
+      const nric = String(r["UIN / NRIC"] || "").trim().toUpperCase();
+      if (nric) cprMap.set(nric, r["CFS (1-9)"] || "");
+    });
+
+    let firstDateRaw = "";
+
+    const results = attendanceData
+      .filter(row => {
+        // Attendance must be 1 and Activity must pass AAP check[cite: 1, 2]
+        if (String(row.Attendance) !== "1") return false;
+        const cleanAct = (row.ActivityDisplay || "").split('\n')[0].trim();
+        const master = masterMap.get(cleanAct);
+        return master !== undefined && master.aap === true;
+      })
+      .map((row, index) => {
+        if (index === 0) firstDateRaw = row.ActivityDateDisplay;
+        const cleanAct = (row.ActivityDisplay || "").split('\n')[0].trim();
+        const nric = (row.RegistrationDocumentNumber || "").trim().toUpperCase();
+        const master = masterMap.get(cleanAct);
+
+        return {
+          activitydatedisplay: formatToISODate(row.ActivityDateDisplay),
+          activitydisplay: cleanAct,
+          fullname: row.FullName || "",
+          age: row.Age || "",
+          postalcode1: row.PostalCode || "", // Maps to Attendance CSV 'PostalCode'[cite: 2]
+          gender: row.Gender || "",
+          registrationdocumentnumber: nric,
+          gui: master ? master.gui : false,
+          cfs: cprMap.get(nric) || "" // CFS integration[cite: 1]
+        };
+      });
+
+    // Generate CSV and Download
+    const csv = Papa.unparse(results);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement("a");
+    const fileTs = getFileTimestamp(firstDateRaw);
+    link.href = URL.createObjectURL(blob);
+    link.download = `etl_activity_${fileTs}.csv`;
+    link.click();
+    document.getElementById('status').innerText = `Success: ${results.length} rows exported.`;
+  }
 </script>
 </body>
 </html>
