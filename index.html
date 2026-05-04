@@ -13,19 +13,28 @@
     .group { margin-bottom: 1.5rem; }
     label { display: block; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
     
-    /* File Input UI Styling */
     .file-input-wrapper { position: relative; width: 100%; }
     input[type="file"] { 
-      width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 6px; 
-      box-sizing: border-box; font-size: 0.9rem; color: transparent; position: relative; z-index: 2; background: transparent;
+      width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; 
+      box-sizing: border-box; font-size: 0.9rem; position: relative; z-index: 2; background: transparent;
     }
+    
+    /* Hide native 'No file chosen' text until a file is picked */
+    input[type="file"]:not(.has-file) { color: transparent; }
     input[type="file"].has-file { color: #1f2937; }
+
     .file-placeholder { 
-      position: absolute; left: 12px; top: 50%; transform: translateY(-50%); 
-      color: #9ca3af; font-size: 0.85rem; pointer-events: none; z-index: 1; 
+      position: absolute; 
+      left: 105px; /* Adjust this value if your button is wider */
+      top: 50%; 
+      transform: translateY(-50%); 
+      color: #9ca3af; 
+      font-size: 0.85rem; 
+      pointer-events: none; 
+      z-index: 1; 
     }
 
-    .btn { width: 100%; padding: 0.8rem; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: background 0.2s; }
+    .btn { width: 100%; padding: 0.8rem; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: background 0.2s; margin-top: 10px; }
     .btn:hover { background: #1d4ed8; }
     .status { margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: #9ca3af; font-weight: 500; }
   </style>
@@ -39,7 +48,7 @@
     <label>1. Activity Master (XLSX)</label>
     <div class="file-input-wrapper">
       <input type="file" id="masterFile" accept=".xlsx" onchange="updateUI(this)">
-      <span class="file-placeholder">Example: AAC_ActivityMaster.xlsx</span>
+      <span class="file-placeholder">ActivityMaster.xlsx</span>
     </div>
   </div>
 
@@ -47,7 +56,7 @@
     <label>2. CPR File (XLSX)</label>
     <div class="file-input-wrapper">
       <input type="file" id="cprFile" accept=".xlsx" onchange="updateUI(this)">
-      <span class="file-placeholder">Example: CPR2026000010.xlsx</span>
+      <span class="file-placeholder">2026000010.xlsx</span>
     </div>
   </div>
 
@@ -55,7 +64,7 @@
     <label>3. Attendance (CSV)</label>
     <div class="file-input-wrapper">
       <input type="file" id="attendanceFile" accept=".csv" onchange="updateUI(this)">
-      <span class="file-placeholder">Example: AACActivityAttendance.csv</span>
+      <span class="file-placeholder">ActivityAttendance.csv</span>
     </div>
   </div>
 
@@ -64,7 +73,6 @@
 </div>
 
 <script>
-  // UI Helper for file inputs
   function updateUI(input) {
     const placeholder = input.nextElementSibling;
     if (input.files.length > 0) {
@@ -76,24 +84,18 @@
     }
   }
 
-  // Helper to get Month/Year for filename
   function getFileTimestamp(dateStr) {
     if (!dateStr) return "output";
     const parts = dateStr.split('-'); 
-    if (parts.length < 3) return "output";
-    return (parts[1] + parts[2]).toLowerCase().replace(/ .*/,''); // e.g., apr2026
+    return (parts[1] + parts[2]).toLowerCase().replace(/ .*/,'');
   }
 
-  // Formats to YYYY-MM-DD for Supabase
   function formatToISODate(str) {
     if (!str) return "";
     const match = str.match(/^(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-(\d{4})/i);
     if (!match) return str;
-    const day = match[1].padStart(2, "0");
-    const monthStr = match[2].toLowerCase();
-    const year = match[3];
     const months = { jan:"01", feb:"02", mar:"03", apr:"04", may:"05", jun:"06", jul:"07", aug:"08", sep:"09", oct:"10", nov:"11", dec:"12" };
-    return `${year}-${months[monthStr]}-${day}`;
+    return `${match[3]}-${months[match[2].toLowerCase()]}-${match[1].padStart(2, "0")}`;
   }
 
   async function parseExcel(file, skipRows = 0) {
@@ -102,7 +104,6 @@
     return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { range: skipRows });
   }
 
-  // Specifically detects the CPR header "UIN / NRIC"
   async function parseCPRWithAutoHeader(file) {
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data);
@@ -130,7 +131,6 @@
     const cprData = await parseCPRWithAutoHeader(cFile);
     const attendanceData = await parseCSV(aFile);
 
-    // Build Master Map
     const masterMap = new Map();
     masterData.forEach(r => {
       const act = r.Activity || r.ActivityDisplay;
@@ -141,7 +141,6 @@
       }
     });
 
-    // Build CPR Map (Using Normalized NRIC)
     const cprMap = new Map();
     cprData.forEach(r => {
       const nric = String(r["UIN / NRIC"] || "").trim().toUpperCase();
@@ -168,7 +167,7 @@
           activitydisplay: cleanAct,
           fullname: row.FullName || "",
           age: row.Age || "",
-          postalcode1: row.PostalCode || "", // Fixed based on actual CSV header
+          postalcode1: row.PostalCode || "",
           gender: row.Gender || "",
           registrationdocumentnumber: nric,
           gui: master ? master.gui : false,
@@ -179,11 +178,9 @@
     const csv = Papa.unparse(results);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement("a");
-    
     const fileTs = getFileTimestamp(firstDateRaw);
     link.href = URL.createObjectURL(blob);
     link.download = `etl_activity_${fileTs}.csv`;
-    
     link.click();
     document.getElementById('status').innerText = `Success: ${results.length} rows exported.`;
   }
